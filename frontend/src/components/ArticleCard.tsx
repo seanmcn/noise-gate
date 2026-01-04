@@ -30,7 +30,7 @@ export function ArticleCard({ article, groupedCount, isPrioritySource, isSelecte
   return (
     <article className={cn(
       "group card-gradient border border-border/50 rounded-lg p-5 transition-all duration-300 animate-slide-up",
-      "hover:border-primary/30",
+      "hover:border-primary/30 h-full flex flex-col",
       isSeen && "opacity-75",
       isSelected && "ring-2 ring-primary border-primary/50"
     )}>
@@ -77,17 +77,19 @@ export function ArticleCard({ article, groupedCount, isPrioritySource, isSelecte
         {article.title}
       </h3>
 
-      {article.summary && (
-        <SummaryBlock summary={article.summary} />
-      )}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        {article.summary && (
+          <SummaryBlock summary={article.summary} />
+        )}
 
-      {!article.summary && (
-        <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
-          {article.snippet}
-        </p>
-      )}
+        {!article.summary && (
+          <p className="text-muted-foreground text-sm line-clamp-3">
+            {article.snippet}
+          </p>
+        )}
+      </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mt-auto pt-3">
         <div className="flex items-center gap-3 text-muted-foreground text-xs">
           <div className="flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5" />
@@ -133,14 +135,14 @@ function SummaryBlock({ summary }: { summary: string }) {
   const whyItMatters = tldrMatch[2]?.trim();
 
   return (
-    <div className="text-sm mb-3 space-y-1.5 border-l-2 border-primary/30 pl-3">
+    <div className="text-sm space-y-1 border-l-2 border-primary/30 pl-3">
       {tldr && (
-        <p className="text-foreground/90">
+        <p className="text-foreground/90 line-clamp-2">
           {tldr}
         </p>
       )}
       {whyItMatters && (
-        <p className="text-muted-foreground text-xs">
+        <p className="text-muted-foreground text-xs line-clamp-2">
           <span className="font-medium text-primary/70">Why it matters:</span>{' '}
           {whyItMatters}
         </p>
