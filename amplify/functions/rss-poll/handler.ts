@@ -8,6 +8,8 @@ import {
   updateStoryGroupCount,
   createStoryGroupInDb,
   getAllActiveFeeds,
+  updateFeedSuccess,
+  updateFeedError,
   type DbFeed,
 } from './db';
 
@@ -56,6 +58,8 @@ export const handler: Handler = async (event): Promise<PollResult> => {
       console.log(`Found ${items.length} items in ${feed.name}`);
 
       if (items.length === 0) {
+        // Still a success - feed responded but had no items
+        await updateFeedSuccess(feed.id);
         results.feedsProcessed++;
         continue;
       }
@@ -109,11 +113,16 @@ export const handler: Handler = async (event): Promise<PollResult> => {
         }
       }
 
+      // Feed processed successfully
+      await updateFeedSuccess(feed.id);
       results.feedsProcessed++;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error(`Failed to process feed ${feed.name}:`, message);
       results.errors.push(`Feed ${feed.name}: ${message}`);
+
+      // Track the error for this feed
+      await updateFeedError(feed.id, message);
     }
   }
 

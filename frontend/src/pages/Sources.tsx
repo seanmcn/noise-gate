@@ -1,13 +1,63 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Trash2, Loader2, Rss, Eye, Star } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Loader2, Rss, Eye, Star, Circle, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Header } from '@/components/Header';
 import { FeedPreviewDialog } from '@/components/FeedPreviewDialog';
 import { useFeedsStore } from '@/store/feedsStore';
 import type { Feed } from '@noise-gate/shared';
+import { formatRelativeTime } from '@noise-gate/shared';
+
+// Feed health status indicator
+function FeedHealthIndicator({ feed }: { feed: Feed }) {
+  const errors = feed.consecutiveErrors || 0;
+
+  // Determine health status
+  let status: 'healthy' | 'warning' | 'error';
+  let statusText: string;
+  let colorClass: string;
+
+  if (errors === 0) {
+    status = 'healthy';
+    statusText = feed.lastSuccessAt
+      ? `Healthy - last success ${formatRelativeTime(feed.lastSuccessAt)}`
+      : 'Healthy';
+    colorClass = 'text-green-500';
+  } else if (errors < 5) {
+    status = 'warning';
+    statusText = `${errors} error${errors > 1 ? 's' : ''} - ${feed.lastError || 'Unknown error'}`;
+    colorClass = 'text-yellow-500';
+  } else {
+    status = 'error';
+    statusText = `Auto-disabled after ${errors} errors - ${feed.lastError || 'Unknown error'}`;
+    colorClass = 'text-red-500';
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button className={`${colorClass} cursor-default`}>
+          {status === 'error' ? (
+            <AlertCircle className="w-4 h-4" />
+          ) : (
+            <Circle className={`w-3 h-3 ${status === 'healthy' ? 'fill-current' : ''}`} />
+          )}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs">
+        <p className="text-xs">{statusText}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 interface SourcesProps {
   signOut: () => void;
@@ -62,6 +112,7 @@ export function Sources({ signOut }: SourcesProps) {
   }
 
   return (
+    <TooltipProvider>
     <div className="min-h-screen bg-background">
       <Header signOut={signOut} />
 
@@ -172,10 +223,13 @@ export function Sources({ signOut }: SourcesProps) {
                       disabled={isSaving}
                     />
                     <div className="flex-1 min-w-0">
-                      <span className="font-display font-medium text-foreground block truncate">
-                        {feed.name}
-                      </span>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <div className="flex items-center gap-2">
+                        <FeedHealthIndicator feed={feed} />
+                        <span className="font-display font-medium text-foreground truncate">
+                          {feed.name}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate ml-5">
                         {feed.url}
                       </p>
                     </div>
@@ -225,6 +279,7 @@ export function Sources({ signOut }: SourcesProps) {
         onOpenChange={(open) => !open && setPreviewFeed(null)}
       />
     </div>
+    </TooltipProvider>
   );
 }
 

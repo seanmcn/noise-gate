@@ -49,6 +49,7 @@ export const useFeedsStore = create<FeedsState>((set, get) => ({
         isActive: true,
         isPriority: false,
         pollIntervalMinutes: 15,
+        consecutiveErrors: 0,
       });
       set((state) => ({
         feeds: [...state.feeds, newFeed],

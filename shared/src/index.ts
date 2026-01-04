@@ -59,6 +59,10 @@ export interface Feed {
   isPriority: boolean;
   lastPolledAt?: string;
   pollIntervalMinutes: number;
+  // Error tracking
+  lastError?: string;
+  consecutiveErrors: number;
+  lastSuccessAt?: string;
 }
 
 // Frontend filter state (ephemeral, not persisted to backend)

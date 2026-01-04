@@ -246,6 +246,9 @@ export const dataApi = {
       isPriority: (record.isPriority as boolean) || false,
       lastPolledAt: (record.lastPolledAt as string) || undefined,
       pollIntervalMinutes: (record.pollIntervalMinutes as number) || 15,
+      lastError: (record.lastError as string) || undefined,
+      consecutiveErrors: (record.consecutiveErrors as number) || 0,
+      lastSuccessAt: (record.lastSuccessAt as string) || undefined,
     }));
   },
 
@@ -275,6 +278,9 @@ export const dataApi = {
       isPriority: (data.isPriority as boolean) || false,
       lastPolledAt: (data.lastPolledAt as string) || undefined,
       pollIntervalMinutes: (data.pollIntervalMinutes as number) || 15,
+      lastError: (data.lastError as string) || undefined,
+      consecutiveErrors: (data.consecutiveErrors as number) || 0,
+      lastSuccessAt: (data.lastSuccessAt as string) || undefined,
     };
   },
 
@@ -301,6 +307,9 @@ export const dataApi = {
       isPriority: (data.isPriority as boolean) || false,
       lastPolledAt: (data.lastPolledAt as string) || undefined,
       pollIntervalMinutes: (data.pollIntervalMinutes as number) || 15,
+      lastError: (data.lastError as string) || undefined,
+      consecutiveErrors: (data.consecutiveErrors as number) || 0,
+      lastSuccessAt: (data.lastSuccessAt as string) || undefined,
     };
   },
 

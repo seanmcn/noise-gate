@@ -246,3 +246,86 @@ export async function getAllActiveFeeds(): Promise<DbFeed[]> {
     return [];
   }
 }
+
+/**
+ * Update feed after successful poll - clear errors, update timestamps.
+ */
+export async function updateFeedSuccess(feedId: string): Promise<void> {
+  const now = new Date().toISOString();
+
+  try {
+    await docClient.send(
+      new UpdateCommand({
+        TableName: FEED_TABLE,
+        Key: { id: feedId },
+        UpdateExpression: `
+          SET lastPolledAt = :now,
+              lastSuccessAt = :now,
+              consecutiveErrors = :zero,
+              updatedAt = :now
+          REMOVE lastError
+        `,
+        ExpressionAttributeValues: {
+          ':now': now,
+          ':zero': 0,
+        },
+      })
+    );
+  } catch (error) {
+    console.error(`Failed to update feed success for ${feedId}:`, error);
+  }
+}
+
+/**
+ * Update feed after failed poll - increment error count, set error message.
+ * Auto-disables feed after 5 consecutive failures.
+ */
+export async function updateFeedError(feedId: string, errorMessage: string): Promise<void> {
+  const now = new Date().toISOString();
+  const MAX_CONSECUTIVE_ERRORS = 5;
+
+  try {
+    // First, get current error count
+    const getResponse = await docClient.send(
+      new ScanCommand({
+        TableName: FEED_TABLE,
+        FilterExpression: 'id = :id',
+        ExpressionAttributeValues: {
+          ':id': feedId,
+        },
+        ProjectionExpression: 'consecutiveErrors',
+        Limit: 1,
+      })
+    );
+
+    const currentErrors = (getResponse.Items?.[0]?.consecutiveErrors as number) || 0;
+    const newErrorCount = currentErrors + 1;
+    const shouldDisable = newErrorCount >= MAX_CONSECUTIVE_ERRORS;
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: FEED_TABLE,
+        Key: { id: feedId },
+        UpdateExpression: `
+          SET lastPolledAt = :now,
+              lastError = :error,
+              consecutiveErrors = :errorCount,
+              isActive = :active,
+              updatedAt = :now
+        `,
+        ExpressionAttributeValues: {
+          ':now': now,
+          ':error': errorMessage.slice(0, 500), // Limit error message length
+          ':errorCount': newErrorCount,
+          ':active': !shouldDisable,
+        },
+      })
+    );
+
+    if (shouldDisable) {
+      console.log(`Feed ${feedId} auto-disabled after ${MAX_CONSECUTIVE_ERRORS} consecutive errors`);
+    }
+  } catch (error) {
+    console.error(`Failed to update feed error for ${feedId}:`, error);
+  }
+}

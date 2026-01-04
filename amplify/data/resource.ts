@@ -10,6 +10,10 @@ const schema = a.schema({
       isPriority: a.boolean().default(false),
       lastPolledAt: a.datetime(),
       pollIntervalMinutes: a.integer().default(15),
+      // Error tracking
+      lastError: a.string(),
+      consecutiveErrors: a.integer().default(0),
+      lastSuccessAt: a.datetime(),
     })
     .authorization((allow) => [allow.owner()]),
 
