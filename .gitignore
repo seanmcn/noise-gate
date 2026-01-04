@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Amplify
+.amplify/
+amplify_outputs.json
+amplify_outputs.d.ts
+
+# Generated Amplify outputs (will be generated in frontend/public for dev)
+frontend/public/amplify_outputs.json
+
+# Build
+dist/
+build/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/*
+!.vscode/tasks.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
