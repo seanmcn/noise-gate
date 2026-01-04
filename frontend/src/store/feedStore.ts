@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import type { Article, Sentiment, Category } from '@noise-gate/shared';
 import { dataApi } from '@/lib/data-api';
 
+export type SortOption = 'newest' | 'importance';
+
 interface FeedState {
   // Data
   articles: Article[];
@@ -14,6 +16,7 @@ interface FeedState {
   sentimentFilters: Sentiment[];
   categoryFilters: Category[];
   showHidden: boolean;
+  sortBy: SortOption;
 
   // Pagination
   currentPage: number;
@@ -27,6 +30,7 @@ interface FeedState {
   setSentimentFilters: (filters: Sentiment[]) => void;
   toggleCategory: (category: Category) => void;
   toggleShowHidden: () => void;
+  setSortBy: (sort: SortOption) => void;
   setPage: (page: number) => void;
   resetFilters: () => void;
 }
@@ -38,6 +42,7 @@ export const useFeedStore = create<FeedState>((set) => ({
   sentimentFilters: [],
   categoryFilters: [],
   showHidden: false,
+  sortBy: 'newest',
   currentPage: 1,
 
   loadArticles: async () => {
@@ -96,6 +101,10 @@ export const useFeedStore = create<FeedState>((set) => ({
     set((state) => ({ showHidden: !state.showHidden }));
   },
 
+  setSortBy: (sort) => {
+    set({ sortBy: sort, currentPage: 1 });
+  },
+
   setPage: (page) => {
     set({ currentPage: page });
   },
@@ -105,6 +114,7 @@ export const useFeedStore = create<FeedState>((set) => ({
       sentimentFilters: [],
       categoryFilters: [],
       showHidden: false,
+      sortBy: 'newest',
       currentPage: 1,
     });
   },

@@ -1,10 +1,18 @@
 import { useMemo, useState } from 'react';
+import { ArrowDownWideNarrow, Clock, Zap } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Hero } from '@/components/Hero';
 import { FilterBar } from '@/components/FilterBar';
 import { NewsFeed } from '@/components/NewsFeed';
 import { GroupedSourcesDialog } from '@/components/GroupedSourcesDialog';
-import { useFeedStore } from '@/store/feedStore';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useFeedStore, type SortOption } from '@/store/feedStore';
 import { useSettingsStore } from '@/store/settingsStore';
 
 interface IndexProps {
@@ -18,9 +26,11 @@ const Index = ({ signOut }: IndexProps) => {
     sentimentFilters,
     categoryFilters,
     showHidden,
+    sortBy,
     currentPage,
     toggleCategory,
     toggleShowHidden,
+    setSortBy,
     setPage,
     markAsSeen,
   } = useFeedStore();
@@ -49,7 +59,7 @@ const Index = ({ signOut }: IndexProps) => {
   }, [articles, selectedStoryGroupId]);
 
   const filteredArticles = useMemo(() => {
-    return articles.filter((article) => {
+    const filtered = articles.filter((article) => {
       if (sentimentFilters.length > 0 && !sentimentFilters.includes(article.sentiment)) return false;
       if (categoryFilters.length > 0 && !categoryFilters.includes(article.category)) return false;
       const content = `${article.title} ${article.snippet}`.toLowerCase();
@@ -60,7 +70,20 @@ const Index = ({ signOut }: IndexProps) => {
       if (!showHidden && article.seenAt) return false;
       return true;
     });
-  }, [articles, sentimentFilters, categoryFilters, blockedWords, showHidden]);
+
+    // Apply sorting
+    if (sortBy === 'importance') {
+      return [...filtered].sort((a, b) => {
+        const scoreA = a.importanceScore ?? 50;
+        const scoreB = b.importanceScore ?? 50;
+        // Higher importance first, then by date
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+      });
+    }
+    // Default: newest first (already sorted by API)
+    return filtered;
+  }, [articles, sentimentFilters, categoryFilters, blockedWords, showHidden, sortBy]);
 
   const visibleCount = filteredArticles.length;
 
@@ -79,6 +102,31 @@ const Index = ({ signOut }: IndexProps) => {
             <span className="text-foreground">{visibleCount}</span> stories
             {isLoading && <span className="ml-2 text-sm">(loading...)</span>}
           </h2>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
+                <ArrowDownWideNarrow className="w-4 h-4" />
+                {sortBy === 'newest' ? 'Newest' : 'Important'}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => setSortBy('newest')}
+                className={sortBy === 'newest' ? 'bg-secondary' : ''}
+              >
+                <Clock className="w-4 h-4 mr-2" />
+                Newest first
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setSortBy('importance')}
+                className={sortBy === 'importance' ? 'bg-secondary' : ''}
+              >
+                <Zap className="w-4 h-4 mr-2" />
+                Most important
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <NewsFeed

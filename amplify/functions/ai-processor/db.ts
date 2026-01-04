@@ -79,6 +79,8 @@ export async function updateItemClassification(
         SET category = :category,
             sentiment = :sentiment,
             sentimentScore = :score,
+            importanceScore = :importance,
+            summary = :summary,
             aiProcessedAt = :now,
             updatedAt = :now
       `,
@@ -86,6 +88,8 @@ export async function updateItemClassification(
         ':category': result.category,
         ':sentiment': result.sentiment,
         ':score': result.sentimentScore,
+        ':importance': result.importanceScore,
+        ':summary': result.summary,
         ':now': now,
       },
     })
@@ -112,6 +116,7 @@ export async function updateStoryGroupClassification(
           SET category = :category,
               sentiment = :sentiment,
               sentimentScore = :score,
+              importanceScore = :importance,
               updatedAt = :now
         `,
         ConditionExpression: 'attribute_not_exists(category)',
@@ -119,6 +124,7 @@ export async function updateStoryGroupClassification(
           ':category': result.category,
           ':sentiment': result.sentiment,
           ':score': result.sentimentScore,
+          ':importance': result.importanceScore,
           ':now': now,
         },
       })

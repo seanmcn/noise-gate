@@ -11,9 +11,11 @@ export interface ClassificationResult {
   category: string;
   sentiment: string;
   sentimentScore: number;
+  importanceScore: number;
+  summary: string;
 }
 
-const SYSTEM_PROMPT = `You are a news content classifier. For each item, determine:
+const SYSTEM_PROMPT = `You are a news content analyst. For each item, determine:
 
 1. CATEGORY - The primary topic:
    - world: International news, geopolitics, conflicts
@@ -30,7 +32,7 @@ const SYSTEM_PROMPT = `You are a news content classifier. For each item, determi
    - politics: Political news, elections, government policy
    - other: Anything else
 
-2. SENTIMENT - The emotional tone of the content:
+2. SENTIMENT - The emotional tone:
    - positive: Optimistic, good news, achievements
    - neutral: Factual, balanced, informational
    - negative: Pessimistic, bad news, problems, conflicts
@@ -42,13 +44,19 @@ const SYSTEM_PROMPT = `You are a news content classifier. For each item, determi
    - 56-70: Somewhat positive
    - 71-100: Strongly positive
 
-Focus on the headline and summary. Be objective.
+4. IMPORTANCE SCORE (0-100) - How significant/newsworthy is this?
+   - 0-20: Trivial, routine, minor updates
+   - 21-40: Mildly interesting, niche appeal
+   - 41-60: Moderately important, relevant to many
+   - 61-80: Very important, significant developments
+   - 81-100: Major breaking news, widespread impact
+   Consider: timeliness, scope of impact, novelty, consequence
 
-Respond with a JSON array of objects, each with:
-- id: the item ID
-- category: one of the categories above
-- sentiment: one of positive/neutral/negative
-- sentimentScore: number 0-100`;
+5. SUMMARY - A brief analysis in this exact format:
+   "TL;DR: [1-2 sentence summary]. Why it matters: [brief context on significance/implications]"
+   Keep under 200 characters total. Be concise and informative.
+
+Focus on the headline and summary. Be objective.`;
 
 /**
  * Classify a batch of items using OpenAI GPT-4o-mini.
@@ -104,8 +112,10 @@ Summary: ${item.content?.slice(0, 300) || 'N/A'}`
                     category: { type: 'string', enum: ['world', 'tech', 'programming', 'science', 'business', 'local', 'health', 'sports', 'gaming', 'entertainment', 'humor', 'politics', 'other'] },
                     sentiment: { type: 'string', enum: ['positive', 'neutral', 'negative'] },
                     sentimentScore: { type: 'number' },
+                    importanceScore: { type: 'number' },
+                    summary: { type: 'string' },
                   },
-                  required: ['id', 'category', 'sentiment', 'sentimentScore'],
+                  required: ['id', 'category', 'sentiment', 'sentimentScore', 'importanceScore', 'summary'],
                   additionalProperties: false,
                 },
               },
@@ -145,6 +155,8 @@ Summary: ${item.content?.slice(0, 300) || 'N/A'}`
       category: validateCategory(result.category),
       sentiment: validateSentiment(result.sentiment),
       sentimentScore: validateScore(result.sentimentScore),
+      importanceScore: validateScore(result.importanceScore),
+      summary: validateSummary(result.summary),
     };
   });
 }
@@ -165,4 +177,10 @@ function validateScore(score: number): number {
   const num = Number(score);
   if (isNaN(num)) return 50;
   return Math.max(0, Math.min(100, Math.round(num)));
+}
+
+function validateSummary(summary: string): string {
+  if (!summary || typeof summary !== 'string') return '';
+  // Truncate to 300 chars max (with some buffer beyond 200 char target)
+  return summary.trim().slice(0, 300);
 }

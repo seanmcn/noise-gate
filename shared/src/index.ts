@@ -26,6 +26,8 @@ export interface Article {
   feedName: string;
   sentiment: Sentiment;
   score: number; // 0-100 sentiment score
+  importanceScore?: number; // 0-100 importance/significance score
+  summary?: string; // AI-generated TL;DR + why it matters
   publishedAt: string; // ISO 8601
   fetchedAt: string; // ISO 8601
   tags: string[];
@@ -74,6 +76,7 @@ export interface StoryGroup {
   category?: Category;
   sentiment?: Sentiment;
   sentimentScore?: number;
+  importanceScore?: number;
 }
 
 // Utility functions

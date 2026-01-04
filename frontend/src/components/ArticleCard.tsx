@@ -1,4 +1,4 @@
-import { ExternalLink, Clock, Check, Layers } from 'lucide-react';
+import { ExternalLink, Clock, Check, Layers, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Article } from '@/types/article';
 import { cn } from '@/lib/utils';
@@ -52,6 +52,16 @@ export function ArticleCard({ article, groupedCount, onMarkSeen, onShowGroupedSo
               </Badge>
             </button>
           )}
+          {article.importanceScore !== undefined && article.importanceScore >= 70 && (
+            <Badge
+              variant="outline"
+              className="text-[10px] font-display flex items-center gap-1 text-amber-500 border-amber-500/30"
+              title={`Importance: ${article.importanceScore}/100`}
+            >
+              <Zap className="w-3 h-3" />
+              Important
+            </Badge>
+          )}
         </div>
         
         <SentimentMeter score={article.score} sentiment={article.sentiment} />
@@ -61,9 +71,17 @@ export function ArticleCard({ article, groupedCount, onMarkSeen, onShowGroupedSo
         {article.title}
       </h3>
 
-      <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
-        {article.snippet}
-      </p>
+      {article.summary && (
+        <p className="text-sm text-foreground/80 mb-3 italic border-l-2 border-primary/30 pl-3">
+          {article.summary}
+        </p>
+      )}
+
+      {!article.summary && (
+        <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
+          {article.snippet}
+        </p>
+      )}
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3 text-muted-foreground text-xs">
