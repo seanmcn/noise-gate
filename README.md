@@ -67,9 +67,10 @@ NoiseGate is self-hosted using AWS Amplify. You'll need:
    npm install
    ```
 
-2. Set the OpenAI API key as a sandbox secret:
+2. Copy `.env.local.example` to `.env.local` and add your OpenAI API key:
    ```bash
-   npx ampx sandbox secret set OPENAI_API_KEY
+   cp .env.local.example .env.local
+   # Edit .env.local with your key
    ```
 
 3. Start the development environment:
@@ -79,15 +80,18 @@ NoiseGate is self-hosted using AWS Amplify. You'll need:
 
 4. Open http://localhost:5173
 
+The sandbox secrets are automatically set from `.env.local` when starting the sandbox.
+
 ### VSCode Tasks
 
 If using VSCode, run tasks from the Command Palette (Cmd+Shift+P → "Tasks: Run Task"):
 
-- **Sandbox: Set OpenAI Secret** - Configure your OpenAI API key
-- **Sandbox: Start** - Start the Amplify sandbox
+- **Dev: Start All** - Start both sandbox and frontend (auto-sets secrets)
+- **Sandbox: Start** - Start the Amplify sandbox (auto-sets secrets)
+- **Sandbox: Reset** - Delete sandbox and recreate (auto-sets secrets)
 - **Frontend: Start** - Start just the frontend dev server
-- **Dev: Start All** - Start both sandbox and frontend
 - **Build: All** - Build all workspaces
+- **Data: Clear All** - Clear all data from DynamoDB tables
 
 ## Project Structure
 

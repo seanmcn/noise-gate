@@ -24,7 +24,7 @@
     {
       "label": "Sandbox: Start",
       "type": "shell",
-      "command": "npm run sandbox",
+      "command": "./scripts/set-secrets.sh && npm run sandbox",
       "isBackground": true,
       "problemMatcher": [],
       "presentation": {
@@ -39,7 +39,7 @@
     {
       "label": "Sandbox: Reset (Delete & Restart)",
       "type": "shell",
-      "command": "npx ampx sandbox delete -y && npx ampx sandbox --outputs-out-dir frontend/public",
+      "command": "npx ampx sandbox delete -y && ./scripts/set-secrets.sh && npx ampx sandbox --outputs-out-dir frontend/public",
       "isBackground": true,
       "problemMatcher": [],
       "presentation": {
@@ -69,7 +69,7 @@
     {
       "label": "Dev: Start All",
       "type": "shell",
-      "command": "npm run dev",
+      "command": "./scripts/set-secrets.sh && npm run dev",
       "isBackground": true,
       "problemMatcher": [],
       "presentation": {
