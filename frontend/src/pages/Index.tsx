@@ -5,6 +5,7 @@ import { Hero } from '@/components/Hero';
 import { FilterBar } from '@/components/FilterBar';
 import { NewsFeed } from '@/components/NewsFeed';
 import { GroupedSourcesDialog } from '@/components/GroupedSourcesDialog';
+import { KeyboardShortcutsHelp } from '@/components/KeyboardShortcutsHelp';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -15,6 +16,7 @@ import {
 import { useFeedStore, type SortOption } from '@/store/feedStore';
 import { useFeedsStore } from '@/store/feedsStore';
 import { useSettingsStore } from '@/store/settingsStore';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 interface IndexProps {
   signOut: () => void;
@@ -28,6 +30,7 @@ const Index = ({ signOut }: IndexProps) => {
     categoryFilters,
     showHidden,
     sortBy,
+    collapseDuplicates,
     currentPage,
     toggleCategory,
     toggleShowHidden,
@@ -47,6 +50,9 @@ const Index = ({ signOut }: IndexProps) => {
   }, [feeds]);
 
   const [selectedStoryGroupId, setSelectedStoryGroupId] = useState<string | null>(null);
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+
+  const pageSize = preferences?.articlesPerPage ?? 12;
 
   // Calculate how many articles are in each story group
   const storyGroupCounts = useMemo(() => {
@@ -79,29 +85,55 @@ const Index = ({ signOut }: IndexProps) => {
     });
 
     // Apply sorting
+    let sorted: typeof filtered;
     if (sortBy === 'importance') {
-      return [...filtered].sort((a, b) => {
+      sorted = [...filtered].sort((a, b) => {
         const scoreA = a.importanceScore ?? 50;
         const scoreB = b.importanceScore ?? 50;
         // Higher importance first, then by date
         if (scoreB !== scoreA) return scoreB - scoreA;
         return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
       });
-    }
-    if (sortBy === 'priority') {
-      return [...filtered].sort((a, b) => {
+    } else if (sortBy === 'priority') {
+      sorted = [...filtered].sort((a, b) => {
         const aPriority = priorityFeedIds.has(a.feedId) ? 1 : 0;
         const bPriority = priorityFeedIds.has(b.feedId) ? 1 : 0;
         // Priority sources first, then by date
         if (bPriority !== aPriority) return bPriority - aPriority;
         return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
       });
+    } else {
+      // Default: newest first (already sorted by API)
+      sorted = filtered;
     }
-    // Default: newest first (already sorted by API)
-    return filtered;
-  }, [articles, sentimentFilters, categoryFilters, blockedWords, showHidden, sortBy, priorityFeedIds]);
+
+    // Collapse duplicates: only show the first article from each story group
+    if (collapseDuplicates) {
+      const seenGroups = new Set<string>();
+      return sorted.filter((article) => {
+        if (!article.storyGroupId) return true; // No group, always show
+        if (seenGroups.has(article.storyGroupId)) return false; // Already seen this group
+        seenGroups.add(article.storyGroupId);
+        return true;
+      });
+    }
+
+    return sorted;
+  }, [articles, sentimentFilters, categoryFilters, blockedWords, showHidden, sortBy, priorityFeedIds, collapseDuplicates]);
 
   const visibleCount = filteredArticles.length;
+  const totalPages = Math.ceil(visibleCount / pageSize);
+
+  // Keyboard navigation
+  const { selectedIndex } = useKeyboardShortcuts({
+    articles: filteredArticles,
+    onMarkSeen: markAsSeen,
+    onShowHelp: () => setShowShortcutsHelp(true),
+    pageSize,
+    currentPage,
+    totalPages,
+    onPageChange: setPage,
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -157,10 +189,11 @@ const Index = ({ signOut }: IndexProps) => {
           currentPage={currentPage}
           storyGroupCounts={storyGroupCounts}
           priorityFeedIds={priorityFeedIds}
+          selectedIndex={selectedIndex}
           onPageChange={setPage}
           onMarkSeen={markAsSeen}
           onShowGroupedSources={setSelectedStoryGroupId}
-          pageSize={preferences?.articlesPerPage ?? 12}
+          pageSize={pageSize}
         />
 
         <GroupedSourcesDialog
@@ -168,6 +201,11 @@ const Index = ({ signOut }: IndexProps) => {
           onOpenChange={(open) => !open && setSelectedStoryGroupId(null)}
           articles={groupedArticles}
           onMarkSeen={markAsSeen}
+        />
+
+        <KeyboardShortcutsHelp
+          open={showShortcutsHelp}
+          onOpenChange={setShowShortcutsHelp}
         />
       </main>
 

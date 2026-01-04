@@ -8,6 +8,7 @@ interface NewsFeedProps {
   currentPage: number;
   storyGroupCounts: Record<string, number>;
   priorityFeedIds?: Set<string>;
+  selectedIndex?: number | null;
   onPageChange: (page: number) => void;
   onMarkSeen: (id: string) => void;
   onShowGroupedSources: (storyGroupId: string) => void;
@@ -19,6 +20,7 @@ export function NewsFeed({
   currentPage,
   storyGroupCounts,
   priorityFeedIds,
+  selectedIndex,
   onPageChange,
   onMarkSeen,
   onShowGroupedSources,
@@ -50,12 +52,14 @@ export function NewsFeed({
         {paginatedArticles.map((article, index) => (
           <div
             key={article.id}
+            data-article-index={index}
             style={{ animationDelay: `${index * 50}ms` }}
           >
             <ArticleCard
               article={article}
               groupedCount={article.storyGroupId ? storyGroupCounts[article.storyGroupId] : undefined}
               isPrioritySource={priorityFeedIds?.has(article.feedId)}
+              isSelected={selectedIndex === index}
               onMarkSeen={onMarkSeen}
               onShowGroupedSources={onShowGroupedSources}
             />

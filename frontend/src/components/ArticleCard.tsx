@@ -8,6 +8,7 @@ interface ArticleCardProps {
   article: Article;
   groupedCount?: number;
   isPrioritySource?: boolean;
+  isSelected?: boolean;
   onMarkSeen: (id: string) => void;
   onShowGroupedSources?: (storyGroupId: string) => void;
 }
@@ -23,14 +24,15 @@ const categoryLabels: Record<string, string> = {
   other: 'Other',
 };
 
-export function ArticleCard({ article, groupedCount, isPrioritySource, onMarkSeen, onShowGroupedSources }: ArticleCardProps) {
+export function ArticleCard({ article, groupedCount, isPrioritySource, isSelected, onMarkSeen, onShowGroupedSources }: ArticleCardProps) {
   const isSeen = Boolean(article.seenAt);
 
   return (
     <article className={cn(
       "group card-gradient border border-border/50 rounded-lg p-5 transition-all duration-300 animate-slide-up",
       "hover:border-primary/30",
-      isSeen && "opacity-75"
+      isSeen && "opacity-75",
+      isSelected && "ring-2 ring-primary border-primary/50"
     )}>
       <div className="flex items-start justify-between gap-4 mb-3">
         <div className="flex items-center gap-2 flex-wrap">
