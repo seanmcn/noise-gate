@@ -37,6 +37,7 @@ export interface UserPreferences {
   blockedWords: string[];
   hiddenArticleIds: string[];
   articlesPerPage: number;
+  sentimentFilters: Sentiment[]; // Active sentiment filters (empty = show all)
   createdAt: string;
   updatedAt: string;
 }

@@ -19,7 +19,6 @@ const Index = ({ signOut }: IndexProps) => {
     categoryFilters,
     showHidden,
     currentPage,
-    toggleSentiment,
     toggleCategory,
     toggleShowHidden,
     setPage,
@@ -70,10 +69,8 @@ const Index = ({ signOut }: IndexProps) => {
       <Header signOut={signOut} />
       <Hero />
       <FilterBar
-        sentimentFilters={sentimentFilters}
         categoryFilters={categoryFilters}
         showHidden={showHidden}
-        onSentimentToggle={toggleSentiment}
         onCategoryToggle={toggleCategory}
         onToggleShowHidden={toggleShowHidden}
       />

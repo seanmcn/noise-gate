@@ -24,6 +24,7 @@ interface FeedState {
 
   // Filter actions
   toggleSentiment: (sentiment: Sentiment) => void;
+  setSentimentFilters: (filters: Sentiment[]) => void;
   toggleCategory: (category: Category) => void;
   toggleShowHidden: () => void;
   setPage: (page: number) => void;
@@ -76,6 +77,10 @@ export const useFeedStore = create<FeedState>((set) => ({
         : [...state.sentimentFilters, sentiment],
       currentPage: 1,
     }));
+  },
+
+  setSentimentFilters: (filters) => {
+    set({ sentimentFilters: filters, currentPage: 1 });
   },
 
   toggleCategory: (category) => {

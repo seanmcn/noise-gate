@@ -86,6 +86,7 @@ export const dataApi = {
         blockedWords: parseJsonField<string[]>(record.blockedWords, []),
         hiddenArticleIds: parseJsonField<string[]>(record.hiddenArticleIds, []),
         articlesPerPage: (record.articlesPerPage as number) || 12,
+        sentimentFilters: parseJsonField<Sentiment[]>(record.sentimentFilters, []),
         createdAt: record.createdAt as string,
         updatedAt: record.updatedAt as string,
       };
@@ -98,6 +99,7 @@ export const dataApi = {
       blockedWords: [],
       hiddenArticleIds: [],
       articlesPerPage: 12,
+      sentimentFilters: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -121,6 +123,7 @@ export const dataApi = {
         blockedWords: JSON.stringify(prefs.blockedWords),
         hiddenArticleIds: JSON.stringify(prefs.hiddenArticleIds),
         articlesPerPage: prefs.articlesPerPage,
+        sentimentFilters: JSON.stringify(prefs.sentimentFilters),
       });
       if (errors?.length) throw new Error(errors[0].message);
       result = data;
@@ -130,6 +133,7 @@ export const dataApi = {
         blockedWords: JSON.stringify(prefs.blockedWords),
         hiddenArticleIds: JSON.stringify(prefs.hiddenArticleIds),
         articlesPerPage: prefs.articlesPerPage,
+        sentimentFilters: JSON.stringify(prefs.sentimentFilters),
       });
       if (errors?.length) throw new Error(errors[0].message);
       result = data;
@@ -145,6 +149,7 @@ export const dataApi = {
       blockedWords: parseJsonField<string[]>(result.blockedWords, []),
       hiddenArticleIds: parseJsonField<string[]>(result.hiddenArticleIds, []),
       articlesPerPage: (result.articlesPerPage as number) || 12,
+      sentimentFilters: parseJsonField<Sentiment[]>(result.sentimentFilters, []),
       createdAt: result.createdAt as string,
       updatedAt: result.updatedAt as string,
     };

@@ -1,5 +1,6 @@
 import { Activity, Settings, LogOut, Rss } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { VuMeterFilter } from './VuMeterFilter';
 
 interface HeaderProps {
   signOut?: () => void;
@@ -21,14 +22,8 @@ export function Header({ signOut }: HeaderProps) {
         </Link>
         
         <div className="flex items-center gap-4">
-          <div className="vu-meter">
-            <div className="vu-bar h-2 bg-sentiment-positive" />
-            <div className="vu-bar h-3 bg-sentiment-positive" />
-            <div className="vu-bar h-4 bg-sentiment-neutral" />
-            <div className="vu-bar h-3 bg-sentiment-neutral" />
-            <div className="vu-bar h-2 bg-sentiment-negative" />
-          </div>
-          
+          <VuMeterFilter />
+
           <Link
             to="/sources"
             className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"

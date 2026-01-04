@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { UserPreferences } from '@noise-gate/shared';
+import type { UserPreferences, Sentiment } from '@noise-gate/shared';
 import { dataApi } from '@/lib/data-api';
 
 interface SettingsState {
@@ -13,6 +13,7 @@ interface SettingsState {
   removeBlockedWord: (word: string) => Promise<void>;
   clearBlockedWords: () => Promise<void>;
   setArticlesPerPage: (size: number) => Promise<void>;
+  setSentimentFilters: (filters: Sentiment[]) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -103,6 +104,25 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const updated = await dataApi.putPreferences({
         ...preferences,
         articlesPerPage: size,
+      });
+      set({ preferences: updated, isSaving: false });
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : 'Failed to save',
+        isSaving: false,
+      });
+    }
+  },
+
+  setSentimentFilters: async (filters: Sentiment[]) => {
+    const { preferences } = get();
+    if (!preferences) return;
+
+    set({ isSaving: true });
+    try {
+      const updated = await dataApi.putPreferences({
+        ...preferences,
+        sentimentFilters: filters,
       });
       set({ preferences: updated, isSaving: false });
     } catch (err) {

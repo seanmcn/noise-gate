@@ -93,6 +93,7 @@ const schema = a.schema({
       blockedWords: a.json(),
       hiddenArticleIds: a.json(),
       articlesPerPage: a.integer().default(12),
+      sentimentFilters: a.json(), // Array of active sentiment filters
     })
     .authorization((allow) => [allow.owner()]),
 });

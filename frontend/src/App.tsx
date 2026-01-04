@@ -18,12 +18,21 @@ interface AuthenticatedAppProps {
 
 function AuthenticatedApp({ signOut }: AuthenticatedAppProps) {
   const loadArticles = useFeedStore((state) => state.loadArticles);
+  const setSentimentFilters = useFeedStore((state) => state.setSentimentFilters);
   const loadPreferences = useSettingsStore((state) => state.loadPreferences);
+  const preferences = useSettingsStore((state) => state.preferences);
 
   useEffect(() => {
     loadArticles();
     loadPreferences();
   }, [loadArticles, loadPreferences]);
+
+  // Sync sentiment filters from preferences to feed store
+  useEffect(() => {
+    if (preferences?.sentimentFilters) {
+      setSentimentFilters(preferences.sentimentFilters);
+    }
+  }, [preferences?.sentimentFilters, setSentimentFilters]);
 
   return (
     <TooltipProvider>
