@@ -23,6 +23,11 @@ const SYSTEM_PROMPT = `You are a news content classifier. For each item, determi
    - business: Finance, economics, startups, markets
    - local: Regional news, local events
    - health: Medical, wellness, public health
+   - sports: Sports news, athletics, teams, competitions
+   - gaming: Video games, esports, game industry
+   - entertainment: Movies, TV, music, celebrity, pop culture
+   - humor: Comedy, memes, satire, funny content
+   - politics: Political news, elections, government policy
    - other: Anything else
 
 2. SENTIMENT - The emotional tone of the content:
@@ -96,7 +101,7 @@ Summary: ${item.content?.slice(0, 300) || 'N/A'}`
                   type: 'object',
                   properties: {
                     id: { type: 'string' },
-                    category: { type: 'string', enum: ['world', 'tech', 'programming', 'science', 'business', 'local', 'health', 'other'] },
+                    category: { type: 'string', enum: ['world', 'tech', 'programming', 'science', 'business', 'local', 'health', 'sports', 'gaming', 'entertainment', 'humor', 'politics', 'other'] },
                     sentiment: { type: 'string', enum: ['positive', 'neutral', 'negative'] },
                     sentimentScore: { type: 'number' },
                   },
@@ -145,7 +150,7 @@ Summary: ${item.content?.slice(0, 300) || 'N/A'}`
 }
 
 function validateCategory(category: string): string {
-  const valid = ['world', 'tech', 'programming', 'science', 'business', 'local', 'health', 'other'];
+  const valid = ['world', 'tech', 'programming', 'science', 'business', 'local', 'health', 'sports', 'gaming', 'entertainment', 'humor', 'politics', 'other'];
   const normalized = category?.toLowerCase().trim();
   return valid.includes(normalized) ? normalized : 'other';
 }

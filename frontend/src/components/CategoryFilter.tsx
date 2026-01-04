@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import { Category } from '@/types/article';
-import { Globe, Cpu, Code, FlaskConical, Briefcase, MapPin, Heart } from 'lucide-react';
+import { Globe, Cpu, Code, FlaskConical, Briefcase, MapPin, Heart, Trophy, Gamepad2, Film, Laugh, Landmark } from 'lucide-react';
 
 interface CategoryFilterProps {
   activeCategories: Category[];
@@ -15,6 +15,11 @@ const categories: { value: Category; label: string; icon: typeof Globe }[] = [
   { value: 'business', label: 'Business', icon: Briefcase },
   { value: 'local', label: 'Local', icon: MapPin },
   { value: 'health', label: 'Health', icon: Heart },
+  { value: 'sports', label: 'Sports', icon: Trophy },
+  { value: 'gaming', label: 'Gaming', icon: Gamepad2 },
+  { value: 'entertainment', label: 'Entertainment', icon: Film },
+  { value: 'humor', label: 'Humor', icon: Laugh },
+  { value: 'politics', label: 'Politics', icon: Landmark },
 ];
 
 export function CategoryFilter({ activeCategories, onToggle }: CategoryFilterProps) {

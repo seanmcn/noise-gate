@@ -10,6 +10,11 @@ export type Category =
   | 'business'
   | 'local'
   | 'health'
+  | 'sports'
+  | 'gaming'
+  | 'entertainment'
+  | 'humor'
+  | 'politics'
   | 'other';
 
 // Article interface (for frontend display)
