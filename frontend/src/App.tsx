@@ -10,6 +10,8 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { useSourcesStore } from '@/store/sourcesStore';
 import { authTheme } from '@/lib/amplify-theme';
 import { AuthLayout } from '@/components/AuthLayout';
+import { SEO } from '@/components/SEO';
+import { WebSiteJsonLd, WebApplicationJsonLd, OrganizationJsonLd } from '@/components/JsonLd';
 import Index from './pages/Index';
 import Settings from './pages/Settings';
 import Sources from './pages/Sources';
@@ -35,9 +37,12 @@ function AuthPage() {
   }
 
   return (
-    <AuthLayout>
-      <Authenticator />
-    </AuthLayout>
+    <>
+      <SEO />
+      <AuthLayout>
+        <Authenticator />
+      </AuthLayout>
+    </>
   );
 }
 
@@ -84,10 +89,15 @@ function AppContent() {
           <Route
             path="/"
             element={
-              <Index
-                signOut={isAuthenticated ? signOut : undefined}
-                isAuthenticated={isAuthenticated}
-              />
+              <>
+                <WebSiteJsonLd />
+                <WebApplicationJsonLd />
+                <OrganizationJsonLd />
+                <Index
+                  signOut={isAuthenticated ? signOut : undefined}
+                  isAuthenticated={isAuthenticated}
+                />
+              </>
             }
           />
           <Route

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ArrowDownWideNarrow, Clock, Zap, Eye, EyeOff } from 'lucide-react';
+import { SEO } from '@/components/SEO';
 import { Header } from '@/components/Header';
 import { Hero } from '@/components/Hero';
 import { FilterBar } from '@/components/FilterBar';
@@ -124,6 +125,7 @@ const Index = ({ signOut, isAuthenticated = false }: IndexProps) => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO />
       <Header signOut={signOut} isAuthenticated={isAuthenticated} />
       {!isAuthenticated && <Hero />}
       <FilterBar

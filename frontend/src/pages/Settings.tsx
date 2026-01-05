@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowLeft, X, Plus, Filter, Trash2, Loader2, LayoutGrid, Layers } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { SEO } from '@/components/SEO';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -64,6 +65,7 @@ export function Settings({ signOut }: SettingsProps) {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO />
       <Header signOut={signOut} isAuthenticated />
 
       <main className="container mx-auto px-4 py-8 max-w-2xl">

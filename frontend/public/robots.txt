@@ -12,3 +12,9 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+# Protected routes - discourage indexing
+Disallow: /settings
+Disallow: /sources
+
+Sitemap: https://minfeed.com/sitemap.xml
