@@ -510,7 +510,7 @@ export const dataApi = {
         pollIntervalMinutes: 15,
         consecutiveErrors: 0,
         subscriberCount: 1,
-        addedByUserId: user.userId,
+        addedByUserId: user.id,
       });
 
       if (errors?.length) throw new Error(errors[0].message);
@@ -525,7 +525,7 @@ export const dataApi = {
         pollIntervalMinutes: 15,
         consecutiveErrors: 0,
         subscriberCount: 1,
-        addedByUserId: user.userId,
+        addedByUserId: user.id,
       };
     } else {
       // Increment subscriber count
