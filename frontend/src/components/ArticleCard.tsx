@@ -38,7 +38,7 @@ export function ArticleCard({ article, groupedCount, isPrioritySource, isSelecte
         <div className="flex items-center gap-2 flex-wrap">
           <Badge variant="source" className={isPrioritySource ? 'ring-1 ring-amber-500/50' : ''}>
             {isPrioritySource && <Star className="w-3 h-3 mr-1 fill-amber-500 text-amber-500" />}
-            {article.feedName}
+            {article.sourceName}
           </Badge>
           <Badge variant="outline" className="text-[10px] font-display uppercase">
             {categoryLabels[article.category] || article.category || 'Uncategorized'}

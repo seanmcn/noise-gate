@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowDownWideNarrow, Clock, Zap, Star } from 'lucide-react';
+import { ArrowDownWideNarrow, Clock, Zap } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Hero } from '@/components/Hero';
 import { FilterBar } from '@/components/FilterBar';
@@ -14,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useFeedStore, type SortOption } from '@/store/feedStore';
-import { useFeedsStore } from '@/store/feedsStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
@@ -40,14 +39,8 @@ const Index = ({ signOut }: IndexProps) => {
   } = useFeedStore();
 
   const { preferences } = useSettingsStore();
-  const { feeds } = useFeedsStore();
 
   const blockedWords = preferences?.blockedWords ?? [];
-
-  // Create a lookup for priority feeds
-  const priorityFeedIds = useMemo(() => {
-    return new Set(feeds.filter((f) => f.isPriority).map((f) => f.id));
-  }, [feeds]);
 
   const [selectedStoryGroupId, setSelectedStoryGroupId] = useState<string | null>(null);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
@@ -94,14 +87,6 @@ const Index = ({ signOut }: IndexProps) => {
         if (scoreB !== scoreA) return scoreB - scoreA;
         return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
       });
-    } else if (sortBy === 'priority') {
-      sorted = [...filtered].sort((a, b) => {
-        const aPriority = priorityFeedIds.has(a.feedId) ? 1 : 0;
-        const bPriority = priorityFeedIds.has(b.feedId) ? 1 : 0;
-        // Priority sources first, then by date
-        if (bPriority !== aPriority) return bPriority - aPriority;
-        return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-      });
     } else {
       // Default: newest first (already sorted by API)
       sorted = filtered;
@@ -119,7 +104,7 @@ const Index = ({ signOut }: IndexProps) => {
     }
 
     return sorted;
-  }, [articles, sentimentFilters, categoryFilters, blockedWords, showHidden, sortBy, priorityFeedIds, collapseDuplicates]);
+  }, [articles, sentimentFilters, categoryFilters, blockedWords, showHidden, sortBy, collapseDuplicates]);
 
   const visibleCount = filteredArticles.length;
   const totalPages = Math.ceil(visibleCount / pageSize);
@@ -155,7 +140,7 @@ const Index = ({ signOut }: IndexProps) => {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
                 <ArrowDownWideNarrow className="w-4 h-4" />
-                {sortBy === 'newest' ? 'Newest' : sortBy === 'importance' ? 'Important' : 'Priority'}
+                {sortBy === 'newest' ? 'Newest' : 'Important'}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -173,13 +158,6 @@ const Index = ({ signOut }: IndexProps) => {
                 <Zap className="w-4 h-4 mr-2" />
                 Most important
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setSortBy('priority')}
-                className={sortBy === 'priority' ? 'bg-secondary' : ''}
-              >
-                <Star className="w-4 h-4 mr-2" />
-                Priority sources
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -188,7 +166,6 @@ const Index = ({ signOut }: IndexProps) => {
           articles={filteredArticles}
           currentPage={currentPage}
           storyGroupCounts={storyGroupCounts}
-          priorityFeedIds={priorityFeedIds}
           selectedIndex={selectedIndex}
           onPageChange={setPage}
           onMarkSeen={markAsSeen}

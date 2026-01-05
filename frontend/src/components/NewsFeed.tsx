@@ -7,7 +7,7 @@ interface NewsFeedProps {
   articles: Article[];
   currentPage: number;
   storyGroupCounts: Record<string, number>;
-  priorityFeedIds?: Set<string>;
+  prioritySourceIds?: Set<string>;
   selectedIndex?: number | null;
   onPageChange: (page: number) => void;
   onMarkSeen: (id: string) => void;
@@ -19,7 +19,7 @@ export function NewsFeed({
   articles,
   currentPage,
   storyGroupCounts,
-  priorityFeedIds,
+  prioritySourceIds,
   selectedIndex,
   onPageChange,
   onMarkSeen,
@@ -58,7 +58,7 @@ export function NewsFeed({
             <ArticleCard
               article={article}
               groupedCount={article.storyGroupId ? storyGroupCounts[article.storyGroupId] : undefined}
-              isPrioritySource={priorityFeedIds?.has(article.feedId)}
+              isPrioritySource={prioritySourceIds?.has(article.sourceId)}
               isSelected={selectedIndex === index}
               onMarkSeen={onMarkSeen}
               onShowGroupedSources={onShowGroupedSources}

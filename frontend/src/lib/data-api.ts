@@ -1,6 +1,6 @@
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
-import type { Article, UserPreferences, Feed, Sentiment, Category } from '@noise-gate/shared';
+import type { Article, UserPreferences, Source, UserSourceSubscription, Sentiment, Category, SourceType } from '@noise-gate/shared';
 import { authService } from './auth-service';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -21,24 +21,36 @@ function parseJsonField<T>(value: unknown, defaultValue: T): T {
 
 export const dataApi = {
   /**
-   * List all feed items.
-   * Owner filtering is handled automatically by Amplify.
+   * List feed items for user's enabled subscriptions only.
    */
   async listFeedItems(): Promise<Article[]> {
     const user = await authService.getCurrentUser();
     if (!user) throw new Error('Not authenticated');
 
+    // Get user's subscriptions to filter by enabled sources
+    const subscriptions = await this.listSubscriptions();
+    const enabledSourceIds = new Set(
+      subscriptions.filter(s => s.isEnabled).map(s => s.sourceId)
+    );
+
+    // If no enabled sources, return empty
+    if (enabledSourceIds.size === 0) {
+      return [];
+    }
+
     const { data, errors } = await client.models.FeedItem.list({
-      limit: 100,
+      limit: 500, // Fetch more since we'll filter client-side
     });
 
     if (errors?.length) {
       throw new Error(errors[0].message);
     }
 
-    // Only return items that have been processed by AI, sorted newest first
+    // Filter by enabled sources and AI processing, sorted newest first
     const processedItems = (data || [])
-      .filter((record: Record<string, unknown>) => record.aiProcessedAt)
+      .filter((record: Record<string, unknown>) =>
+        record.aiProcessedAt && enabledSourceIds.has(record.sourceId as string)
+      )
       .sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
         const dateA = new Date(a.publishedAt as string).getTime();
         const dateB = new Date(b.publishedAt as string).getTime();
@@ -50,8 +62,8 @@ export const dataApi = {
       title: record.title as string,
       snippet: (record.content as string) || '',
       url: record.url as string,
-      feedId: record.feedId as string,
-      feedName: (record.feedName as string) || 'Unknown',
+      sourceId: record.sourceId as string,
+      sourceName: (record.sourceName as string) || 'Unknown',
       sentiment: (record.sentiment as string) as Sentiment,
       score: (record.sentimentScore as number) || 50,
       importanceScore: (record.importanceScore as number) || undefined,
@@ -90,6 +102,7 @@ export const dataApi = {
         hiddenArticleIds: parseJsonField<string[]>(record.hiddenArticleIds, []),
         articlesPerPage: (record.articlesPerPage as number) || 12,
         sentimentFilters: parseJsonField<Sentiment[]>(record.sentimentFilters, []),
+        customSourceLimit: (record.customSourceLimit as number) || 3,
         createdAt: record.createdAt as string,
         updatedAt: record.updatedAt as string,
       };
@@ -103,6 +116,7 @@ export const dataApi = {
       hiddenArticleIds: [],
       articlesPerPage: 12,
       sentimentFilters: [],
+      customSourceLimit: 3,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -153,20 +167,21 @@ export const dataApi = {
       hiddenArticleIds: parseJsonField<string[]>(result.hiddenArticleIds, []),
       articlesPerPage: (result.articlesPerPage as number) || 12,
       sentimentFilters: parseJsonField<Sentiment[]>(result.sentimentFilters, []),
+      customSourceLimit: (result.customSourceLimit as number) || 3,
       createdAt: result.createdAt as string,
       updatedAt: result.updatedAt as string,
     };
   },
 
   /**
-   * List feed items for a specific feed.
+   * List feed items for a specific source.
    */
-  async listFeedItemsByFeed(feedId: string): Promise<Article[]> {
+  async listFeedItemsBySource(sourceId: string): Promise<Article[]> {
     const user = await authService.getCurrentUser();
     if (!user) throw new Error('Not authenticated');
 
     const { data, errors } = await client.models.FeedItem.list({
-      filter: { feedId: { eq: feedId } },
+      filter: { sourceId: { eq: sourceId } },
       limit: 100,
     });
 
@@ -185,8 +200,8 @@ export const dataApi = {
         title: record.title as string,
         snippet: (record.content as string) || '',
         url: record.url as string,
-        feedId: record.feedId as string,
-        feedName: (record.feedName as string) || 'Unknown',
+        sourceId: record.sourceId as string,
+        sourceName: (record.sourceName as string) || 'Unknown',
         sentiment: (record.sentiment as string) as Sentiment,
         score: (record.sentimentScore as number) || 50,
         importanceScore: (record.importanceScore as number) || undefined,
@@ -223,16 +238,16 @@ export const dataApi = {
     if (errors?.length) throw new Error(errors[0].message);
   },
 
-  // ==================== Feed Management ====================
+  // ==================== Source Management ====================
 
   /**
-   * List user's RSS feeds.
+   * List all sources (both system and custom).
    */
-  async listFeeds(): Promise<Feed[]> {
+  async listSources(): Promise<Source[]> {
     const user = await authService.getCurrentUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { data, errors } = await client.models.Feed.list();
+    const { data, errors } = await client.models.Source.list();
 
     if (errors?.length) {
       throw new Error(errors[0].message);
@@ -242,115 +257,249 @@ export const dataApi = {
       id: record.id as string,
       url: record.url as string,
       name: record.name as string,
+      type: (record.type as SourceType) || 'system',
       isActive: record.isActive as boolean,
-      isPriority: (record.isPriority as boolean) || false,
       lastPolledAt: (record.lastPolledAt as string) || undefined,
       pollIntervalMinutes: (record.pollIntervalMinutes as number) || 15,
       lastError: (record.lastError as string) || undefined,
       consecutiveErrors: (record.consecutiveErrors as number) || 0,
       lastSuccessAt: (record.lastSuccessAt as string) || undefined,
+      addedByUserId: (record.addedByUserId as string) || undefined,
+      subscriberCount: (record.subscriberCount as number) || 0,
     }));
   },
 
   /**
-   * Create a new RSS feed.
+   * Get a source by URL (for deduplication check).
    */
-  async createFeed(feed: Omit<Feed, 'id' | 'lastPolledAt'>): Promise<Feed> {
+  async getSourceByUrl(url: string): Promise<Source | null> {
     const user = await authService.getCurrentUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { data, errors } = await client.models.Feed.create({
-      url: feed.url,
-      name: feed.name,
-      isActive: feed.isActive,
-      isPriority: feed.isPriority,
-      pollIntervalMinutes: feed.pollIntervalMinutes,
+    const { data, errors } = await client.models.Source.list({
+      filter: { url: { eq: url } },
+      limit: 1,
     });
 
-    if (errors?.length) throw new Error(errors[0].message);
-    if (!data) throw new Error('Failed to create feed');
-
-    return {
-      id: data.id as string,
-      url: data.url as string,
-      name: data.name as string,
-      isActive: data.isActive as boolean,
-      isPriority: (data.isPriority as boolean) || false,
-      lastPolledAt: (data.lastPolledAt as string) || undefined,
-      pollIntervalMinutes: (data.pollIntervalMinutes as number) || 15,
-      lastError: (data.lastError as string) || undefined,
-      consecutiveErrors: (data.consecutiveErrors as number) || 0,
-      lastSuccessAt: (data.lastSuccessAt as string) || undefined,
-    };
-  },
-
-  /**
-   * Update an RSS feed.
-   */
-  async updateFeed(id: string, updates: Partial<Omit<Feed, 'id'>>): Promise<Feed> {
-    const user = await authService.getCurrentUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data, errors } = await client.models.Feed.update({
-      id,
-      ...updates,
-    });
-
-    if (errors?.length) throw new Error(errors[0].message);
-    if (!data) throw new Error('Failed to update feed');
-
-    return {
-      id: data.id as string,
-      url: data.url as string,
-      name: data.name as string,
-      isActive: data.isActive as boolean,
-      isPriority: (data.isPriority as boolean) || false,
-      lastPolledAt: (data.lastPolledAt as string) || undefined,
-      pollIntervalMinutes: (data.pollIntervalMinutes as number) || 15,
-      lastError: (data.lastError as string) || undefined,
-      consecutiveErrors: (data.consecutiveErrors as number) || 0,
-      lastSuccessAt: (data.lastSuccessAt as string) || undefined,
-    };
-  },
-
-  /**
-   * Delete an RSS feed.
-   * Note: Associated FeedItems will be cleaned up by the daily data-cleanup Lambda.
-   * Items are marked with deletedFeedId and will be deleted by TTL or the scheduled cleanup.
-   */
-  async deleteFeed(id: string): Promise<void> {
-    const user = await authService.getCurrentUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { errors } = await client.models.Feed.delete({ id });
-    if (errors?.length) throw new Error(errors[0].message);
-
-    // Note: The data-cleanup Lambda runs daily to clean up orphaned items.
-    // For immediate cleanup, use the "Data: Cleanup Now" VS Code task.
-  },
-
-  /**
-   * Seed default feeds for a new user.
-   */
-  async seedDefaultFeeds(): Promise<Feed[]> {
-    const DEFAULT_FEEDS = [
-      { url: 'https://www.reddit.com/r/technology/.rss', name: 'r/technology' },
-      { url: 'https://www.reddit.com/r/programming/.rss', name: 'r/programming' },
-      { url: 'https://hnrss.org/frontpage', name: 'Hacker News' },
-      { url: 'https://feeds.bbci.co.uk/news/rss.xml', name: 'BBC News' },
-      { url: 'https://feeds.bbci.co.uk/news/technology/rss.xml', name: 'BBC Technology' },
-    ];
-
-    const feeds: Feed[] = [];
-    for (const feed of DEFAULT_FEEDS) {
-      const created = await this.createFeed({
-        ...feed,
-        isActive: true,
-        isPriority: false,
-        pollIntervalMinutes: 15,
-      });
-      feeds.push(created);
+    if (errors?.length) {
+      throw new Error(errors[0].message);
     }
-    return feeds;
+
+    const record = (data || [])[0] as Record<string, unknown> | undefined;
+    if (!record) return null;
+
+    return {
+      id: record.id as string,
+      url: record.url as string,
+      name: record.name as string,
+      type: (record.type as SourceType) || 'custom',
+      isActive: record.isActive as boolean,
+      lastPolledAt: (record.lastPolledAt as string) || undefined,
+      pollIntervalMinutes: (record.pollIntervalMinutes as number) || 15,
+      lastError: (record.lastError as string) || undefined,
+      consecutiveErrors: (record.consecutiveErrors as number) || 0,
+      lastSuccessAt: (record.lastSuccessAt as string) || undefined,
+      addedByUserId: (record.addedByUserId as string) || undefined,
+      subscriberCount: (record.subscriberCount as number) || 0,
+    };
+  },
+
+  // ==================== Subscription Management ====================
+
+  /**
+   * List user's source subscriptions.
+   */
+  async listSubscriptions(): Promise<UserSourceSubscription[]> {
+    const user = await authService.getCurrentUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, errors } = await client.models.UserSourceSubscription.list();
+
+    if (errors?.length) {
+      throw new Error(errors[0].message);
+    }
+
+    return (data || []).map((record: Record<string, unknown>) => ({
+      id: record.id as string,
+      sourceId: record.sourceId as string,
+      isEnabled: record.isEnabled as boolean,
+      sourceName: (record.sourceName as string) || undefined,
+      sourceUrl: (record.sourceUrl as string) || undefined,
+      sourceType: (record.sourceType as SourceType) || undefined,
+      owner: (record.owner as string) || undefined,
+    }));
+  },
+
+  /**
+   * Create a subscription to a source.
+   */
+  async createSubscription(source: Source): Promise<UserSourceSubscription> {
+    const user = await authService.getCurrentUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, errors } = await client.models.UserSourceSubscription.create({
+      sourceId: source.id,
+      isEnabled: true,
+      sourceName: source.name,
+      sourceUrl: source.url,
+      sourceType: source.type,
+    });
+
+    if (errors?.length) throw new Error(errors[0].message);
+    if (!data) throw new Error('Failed to create subscription');
+
+    return {
+      id: data.id as string,
+      sourceId: data.sourceId as string,
+      isEnabled: data.isEnabled as boolean,
+      sourceName: (data.sourceName as string) || undefined,
+      sourceUrl: (data.sourceUrl as string) || undefined,
+      sourceType: (data.sourceType as SourceType) || undefined,
+      owner: (data.owner as string) || undefined,
+    };
+  },
+
+  /**
+   * Update a subscription (toggle enabled/disabled).
+   */
+  async updateSubscription(id: string, isEnabled: boolean): Promise<UserSourceSubscription> {
+    const user = await authService.getCurrentUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, errors } = await client.models.UserSourceSubscription.update({
+      id,
+      isEnabled,
+    });
+
+    if (errors?.length) throw new Error(errors[0].message);
+    if (!data) throw new Error('Failed to update subscription');
+
+    return {
+      id: data.id as string,
+      sourceId: data.sourceId as string,
+      isEnabled: data.isEnabled as boolean,
+      sourceName: (data.sourceName as string) || undefined,
+      sourceUrl: (data.sourceUrl as string) || undefined,
+      sourceType: (data.sourceType as SourceType) || undefined,
+      owner: (data.owner as string) || undefined,
+    };
+  },
+
+  /**
+   * Delete a subscription.
+   */
+  async deleteSubscription(id: string): Promise<void> {
+    const user = await authService.getCurrentUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { errors } = await client.models.UserSourceSubscription.delete({ id });
+    if (errors?.length) throw new Error(errors[0].message);
+  },
+
+  /**
+   * Add a custom source.
+   * If the URL already exists, just subscribe to it.
+   * Otherwise, create the source and subscribe.
+   */
+  async addCustomSource(url: string, name: string): Promise<{ source: Source; subscription: UserSourceSubscription }> {
+    const user = await authService.getCurrentUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Check if source already exists
+    let source = await this.getSourceByUrl(url);
+
+    if (!source) {
+      // Create new source
+      const { data, errors } = await client.models.Source.create({
+        url,
+        name,
+        type: 'custom',
+        isActive: true,
+        pollIntervalMinutes: 15,
+        consecutiveErrors: 0,
+        subscriberCount: 1,
+        addedByUserId: user.userId,
+      });
+
+      if (errors?.length) throw new Error(errors[0].message);
+      if (!data) throw new Error('Failed to create source');
+
+      source = {
+        id: data.id as string,
+        url: data.url as string,
+        name: data.name as string,
+        type: 'custom',
+        isActive: true,
+        pollIntervalMinutes: 15,
+        consecutiveErrors: 0,
+        subscriberCount: 1,
+        addedByUserId: user.userId,
+      };
+    } else {
+      // Increment subscriber count
+      await client.models.Source.update({
+        id: source.id,
+        subscriberCount: source.subscriberCount + 1,
+      });
+      source.subscriberCount++;
+    }
+
+    // Create subscription
+    const subscription = await this.createSubscription(source);
+
+    return { source, subscription };
+  },
+
+  /**
+   * Remove a custom source subscription.
+   * If this was the last subscriber, delete the source entirely.
+   */
+  async removeCustomSource(subscriptionId: string, sourceId: string): Promise<void> {
+    const user = await authService.getCurrentUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Delete subscription
+    await this.deleteSubscription(subscriptionId);
+
+    // Decrement subscriber count
+    const { data: sources } = await client.models.Source.list({
+      filter: { id: { eq: sourceId } },
+      limit: 1,
+    });
+
+    const source = (sources || [])[0] as Record<string, unknown> | undefined;
+    if (source) {
+      const newCount = Math.max(0, ((source.subscriberCount as number) || 1) - 1);
+
+      if (newCount === 0) {
+        // Delete the source entirely
+        await client.models.Source.delete({ id: sourceId });
+      } else {
+        // Update subscriber count
+        await client.models.Source.update({
+          id: sourceId,
+          subscriberCount: newCount,
+        });
+      }
+    }
+  },
+
+  /**
+   * Subscribe to all system sources (for new users).
+   */
+  async subscribeToSystemSources(): Promise<UserSourceSubscription[]> {
+    const user = await authService.getCurrentUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const sources = await this.listSources();
+    const systemSources = sources.filter(s => s.type === 'system');
+    const subscriptions: UserSourceSubscription[] = [];
+
+    for (const source of systemSources) {
+      const subscription = await this.createSubscription(source);
+      subscriptions.push(subscription);
+    }
+
+    return subscriptions;
   },
 };

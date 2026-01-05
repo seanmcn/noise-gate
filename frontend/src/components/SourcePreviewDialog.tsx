@@ -8,9 +8,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import type { Feed, Article } from '@noise-gate/shared';
+import type { Source, Article } from '@noise-gate/shared';
 import { dataApi } from '@/lib/data-api';
-import { getCustomConfig } from '@/lib/amplify-config';
 import { formatDistanceToNow } from 'date-fns';
 
 interface PreviewItem {
@@ -20,17 +19,17 @@ interface PreviewItem {
   content: string;
 }
 
-interface FeedPreviewDialogProps {
-  feed: Feed | null;
+interface SourcePreviewDialogProps {
+  source: Source | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function FeedPreviewDialog({
-  feed,
+export function SourcePreviewDialog({
+  source,
   open,
   onOpenChange,
-}: FeedPreviewDialogProps) {
+}: SourcePreviewDialogProps) {
   const [tab, setTab] = useState<'imported' | 'live'>('imported');
   const [importedItems, setImportedItems] = useState<Article[]>([]);
   const [liveItems, setLiveItems] = useState<PreviewItem[]>([]);
@@ -41,16 +40,16 @@ export function FeedPreviewDialog({
 
   // Load imported items when dialog opens
   useEffect(() => {
-    if (open && feed) {
+    if (open && source) {
       loadImportedItems();
     }
-  }, [open, feed]);
+  }, [open, source]);
 
   const loadImportedItems = async () => {
-    if (!feed) return;
+    if (!source) return;
     setIsLoadingImported(true);
     try {
-      const items = await dataApi.listFeedItemsByFeed(feed.id);
+      const items = await dataApi.listFeedItemsBySource(source.id);
       setImportedItems(items);
     } catch (err) {
       console.error('Failed to load imported items:', err);
@@ -60,31 +59,15 @@ export function FeedPreviewDialog({
   };
 
   const testLiveFeed = async () => {
-    if (!feed) return;
+    if (!source) return;
     setIsLoadingLive(true);
     setLiveError(null);
     setLiveItems([]);
 
     try {
-      const { feedPreviewUrl } = getCustomConfig();
-      if (!feedPreviewUrl) {
-        throw new Error('Feed preview not available - redeploy backend');
-      }
-
-      const response = await fetch(feedPreviewUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ feedUrl: feed.url }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setLiveItems(data.items || []);
-        setLiveItemCount(data.itemCount || 0);
-      } else {
-        setLiveError(data.error || 'Failed to fetch feed');
-      }
+      // For now, just show a message that live preview isn't available
+      // This would require a Lambda function to fetch and parse the RSS feed
+      setLiveError('Live preview not yet implemented');
     } catch (err) {
       setLiveError(err instanceof Error ? err.message : 'Failed to fetch feed');
     } finally {
@@ -92,16 +75,16 @@ export function FeedPreviewDialog({
     }
   };
 
-  if (!feed) return null;
+  if (!source) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">
-            {feed.name}
+            {source.name}
           </DialogTitle>
-          <p className="text-sm text-muted-foreground truncate">{feed.url}</p>
+          <p className="text-sm text-muted-foreground truncate">{source.url}</p>
         </DialogHeader>
 
         {/* Tabs */}
@@ -146,7 +129,7 @@ export function FeedPreviewDialog({
                 </div>
               ) : importedItems.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground text-sm">
-                  No items imported from this feed yet.
+                  No items imported from this source yet.
                   <br />
                   Wait for the RSS poller to run or trigger it manually.
                 </div>
@@ -221,10 +204,7 @@ export function FeedPreviewDialog({
                 </div>
               ) : liveError ? (
                 <div className="text-center py-8">
-                  <p className="text-destructive text-sm mb-2">{liveError}</p>
-                  <Button variant="outline" size="sm" onClick={testLiveFeed}>
-                    Try Again
-                  </Button>
+                  <p className="text-muted-foreground text-sm mb-2">{liveError}</p>
                 </div>
               ) : liveItems.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground text-sm">

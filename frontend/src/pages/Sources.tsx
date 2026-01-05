@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Trash2, Loader2, Rss, Eye, Star, Circle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Loader2, Rss, Circle, AlertCircle, Globe, User, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,33 +11,32 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Header } from '@/components/Header';
-import { FeedPreviewDialog } from '@/components/FeedPreviewDialog';
-import { useFeedsStore } from '@/store/feedsStore';
-import type { Feed } from '@noise-gate/shared';
+import { SourcePreviewDialog } from '@/components/SourcePreviewDialog';
+import { useSourcesStore } from '@/store/sourcesStore';
+import type { Source } from '@noise-gate/shared';
 import { formatRelativeTime } from '@noise-gate/shared';
 
-// Feed health status indicator
-function FeedHealthIndicator({ feed }: { feed: Feed }) {
-  const errors = feed.consecutiveErrors || 0;
+// Source health status indicator
+function SourceHealthIndicator({ source }: { source: Source }) {
+  const errors = source.consecutiveErrors || 0;
 
-  // Determine health status
   let status: 'healthy' | 'warning' | 'error';
   let statusText: string;
   let colorClass: string;
 
   if (errors === 0) {
     status = 'healthy';
-    statusText = feed.lastSuccessAt
-      ? `Healthy - last success ${formatRelativeTime(feed.lastSuccessAt)}`
+    statusText = source.lastSuccessAt
+      ? `Healthy - last success ${formatRelativeTime(source.lastSuccessAt)}`
       : 'Healthy';
     colorClass = 'text-green-500';
   } else if (errors < 5) {
     status = 'warning';
-    statusText = `${errors} error${errors > 1 ? 's' : ''} - ${feed.lastError || 'Unknown error'}`;
+    statusText = `${errors} error${errors > 1 ? 's' : ''} - ${source.lastError || 'Unknown error'}`;
     colorClass = 'text-yellow-500';
   } else {
     status = 'error';
-    statusText = `Auto-disabled after ${errors} errors - ${feed.lastError || 'Unknown error'}`;
+    statusText = `Auto-disabled after ${errors} errors - ${source.lastError || 'Unknown error'}`;
     colorClass = 'text-red-500';
   }
 
@@ -66,28 +65,32 @@ interface SourcesProps {
 export function Sources({ signOut }: SourcesProps) {
   const [url, setUrl] = useState('');
   const [name, setName] = useState('');
-  const [previewFeed, setPreviewFeed] = useState<Feed | null>(null);
+  const [previewSource, setPreviewSource] = useState<Source | null>(null);
 
   const {
-    feeds,
+    sources,
+    subscriptions,
     isLoading,
     isSaving,
     error,
-    loadFeeds,
-    addFeed,
-    deleteFeed,
-    toggleFeed,
-    togglePriority,
-  } = useFeedsStore();
+    customSourceLimit,
+    systemSources,
+    customSources,
+    enabledSourceIds,
+    customSourceCount,
+    loadSources,
+    toggleSourceEnabled,
+    addCustomSource,
+    removeCustomSource,
+  } = useSourcesStore();
 
   useEffect(() => {
-    loadFeeds();
-  }, [loadFeeds]);
+    loadSources();
+  }, [loadSources]);
 
   const handleAdd = async () => {
     if (!url.trim() || !name.trim()) return;
-
-    await addFeed({ url: url.trim(), name: name.trim() });
+    await addCustomSource(url.trim(), name.trim());
     setUrl('');
     setName('');
   };
@@ -98,7 +101,17 @@ export function Sources({ signOut }: SourcesProps) {
     }
   };
 
-  const activeCount = feeds.filter((f) => f.isActive).length;
+  const getSubscriptionForSource = (sourceId: string) => {
+    return subscriptions.find(s => s.sourceId === sourceId);
+  };
+
+  const isSourceEnabled = (sourceId: string) => {
+    return enabledSourceIds().has(sourceId);
+  };
+
+  const systemSourcesList = systemSources();
+  const customSourcesList = customSources();
+  const currentCustomCount = customSourceCount();
 
   if (isLoading) {
     return (
@@ -113,172 +126,251 @@ export function Sources({ signOut }: SourcesProps) {
 
   return (
     <TooltipProvider>
-    <div className="min-h-screen bg-background">
-      <Header signOut={signOut} />
+      <div className="min-h-screen bg-background">
+        <Header signOut={signOut} />
 
-      <main className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="mb-8">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="font-display text-sm">Back to feed</span>
-          </Link>
-
-          <h1 className="font-display text-3xl font-bold text-foreground">RSS Sources</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage your news sources. Add, remove, or disable feeds.
-          </p>
-        </div>
-
-        {error && (
-          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive text-sm">
-            {error}
-          </div>
-        )}
-
-        <div className="card-gradient border border-border/50 rounded-lg p-6 mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Plus className="w-5 h-5 text-primary" />
-            <h2 className="font-display text-lg font-semibold text-foreground">
-              Add New Source
-            </h2>
-            {isSaving && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="font-display text-sm text-muted-foreground mb-1.5 block">
-                Feed URL
-              </label>
-              <Input
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="https://example.com/rss.xml"
-                className="bg-secondary/50 border-border font-display text-sm"
-                disabled={isSaving}
-              />
-            </div>
-
-            <div>
-              <label className="font-display text-sm text-muted-foreground mb-1.5 block">
-                Name
-              </label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="My Feed"
-                className="bg-secondary/50 border-border font-display text-sm"
-                disabled={isSaving}
-              />
-            </div>
-
-            <Button
-              onClick={handleAdd}
-              disabled={isSaving || !url.trim() || !name.trim()}
-              className="w-full"
+        <main className="container mx-auto px-4 py-8 max-w-2xl">
+          <div className="mb-8">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Source
-            </Button>
-          </div>
-        </div>
+              <ArrowLeft className="w-4 h-4" />
+              <span className="font-display text-sm">Back to feed</span>
+            </Link>
 
-        <div className="card-gradient border border-border/50 rounded-lg p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Rss className="w-5 h-5 text-primary" />
-            <h2 className="font-display text-lg font-semibold text-foreground">
-              Your Sources
-            </h2>
-            <span className="text-sm text-muted-foreground">
-              ({activeCount} active)
-            </span>
+            <h1 className="font-display text-3xl font-bold text-foreground">RSS Sources</h1>
+            <p className="text-muted-foreground mt-2">
+              Manage your news sources. Toggle visibility or add custom feeds.
+            </p>
           </div>
 
-          {feeds.length === 0 ? (
-            <div className="text-center py-8 border border-dashed border-border rounded-lg">
-              <Rss className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-              <p className="text-muted-foreground text-sm">
-                No sources configured. Add a feed above to get started.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {feeds.map((feed) => (
-                <div
-                  key={feed.id}
-                  className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
-                    feed.isActive
-                      ? 'border-border/50 bg-secondary/20'
-                      : 'border-border/30 bg-secondary/10 opacity-60'
-                  }`}
-                >
-                  <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <Switch
-                      checked={feed.isActive}
-                      onCheckedChange={() => toggleFeed(feed.id)}
-                      disabled={isSaving}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <FeedHealthIndicator feed={feed} />
-                        <span className="font-display font-medium text-foreground truncate">
-                          {feed.name}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate ml-5">
-                        {feed.url}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => togglePriority(feed.id)}
-                      disabled={isSaving}
-                      className={feed.isPriority ? 'text-amber-500 hover:text-amber-600' : 'text-muted-foreground hover:text-foreground'}
-                      title={feed.isPriority ? 'Remove priority' : 'Mark as priority'}
-                    >
-                      <Star className={`w-4 h-4 ${feed.isPriority ? 'fill-current' : ''}`} />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setPreviewFeed(feed)}
-                      disabled={isSaving}
-                      className="text-muted-foreground hover:text-foreground"
-                      title="Preview feed"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteFeed(feed.id)}
-                      disabled={isSaving}
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+          {error && (
+            <div className="mb-6 p-4 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive text-sm">
+              {error}
             </div>
           )}
-        </div>
-      </main>
 
-      <FeedPreviewDialog
-        feed={previewFeed}
-        open={previewFeed !== null}
-        onOpenChange={(open) => !open && setPreviewFeed(null)}
-      />
-    </div>
+          {/* System Sources Section */}
+          <div className="card-gradient border border-border/50 rounded-lg p-6 mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Globe className="w-5 h-5 text-primary" />
+              <h2 className="font-display text-lg font-semibold text-foreground">
+                System Sources
+              </h2>
+              <span className="text-sm text-muted-foreground">
+                ({systemSourcesList.filter(s => isSourceEnabled(s.id)).length} enabled)
+              </span>
+            </div>
+
+            <p className="text-sm text-muted-foreground mb-4">
+              Default sources available to all users. Toggle to show/hide in your feed.
+            </p>
+
+            {systemSourcesList.length === 0 ? (
+              <div className="text-center py-8 border border-dashed border-border rounded-lg">
+                <Globe className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-50" />
+                <p className="text-muted-foreground text-sm">
+                  No system sources available yet.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {systemSourcesList.map((source) => {
+                  const enabled = isSourceEnabled(source.id);
+                  return (
+                    <div
+                      key={source.id}
+                      className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
+                        enabled
+                          ? 'border-border/50 bg-secondary/20'
+                          : 'border-border/30 bg-secondary/10 opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        <Switch
+                          checked={enabled}
+                          onCheckedChange={() => toggleSourceEnabled(source.id)}
+                          disabled={isSaving}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <SourceHealthIndicator source={source} />
+                            <span className="font-display font-medium text-foreground truncate">
+                              {source.name}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate ml-5">
+                            {source.url}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPreviewSource(source)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Custom Sources Section */}
+          <div className="card-gradient border border-border/50 rounded-lg p-6 mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <User className="w-5 h-5 text-primary" />
+              <h2 className="font-display text-lg font-semibold text-foreground">
+                Custom Sources
+              </h2>
+              <span className="text-sm text-muted-foreground">
+                ({currentCustomCount}/{customSourceLimit} used)
+              </span>
+            </div>
+
+            <p className="text-sm text-muted-foreground mb-4">
+              Add your own RSS feeds. Limited to {customSourceLimit} sources.
+            </p>
+
+            {customSourcesList.length === 0 ? (
+              <div className="text-center py-8 border border-dashed border-border rounded-lg mb-4">
+                <Rss className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-50" />
+                <p className="text-muted-foreground text-sm">
+                  No custom sources yet. Add one below.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 mb-4">
+                {customSourcesList.map((source) => {
+                  const subscription = getSubscriptionForSource(source.id);
+                  const enabled = isSourceEnabled(source.id);
+                  return (
+                    <div
+                      key={source.id}
+                      className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
+                        enabled
+                          ? 'border-border/50 bg-secondary/20'
+                          : 'border-border/30 bg-secondary/10 opacity-60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        <Switch
+                          checked={enabled}
+                          onCheckedChange={() => toggleSourceEnabled(source.id)}
+                          disabled={isSaving}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <SourceHealthIndicator source={source} />
+                            <span className="font-display font-medium text-foreground truncate">
+                              {source.name}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate ml-5">
+                            {source.url}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setPreviewSource(source)}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        {subscription && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeCustomSource(subscription.id, source.id)}
+                            disabled={isSaving}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Add Custom Source Form */}
+            {currentCustomCount < customSourceLimit && (
+              <div className="border-t border-border/50 pt-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Plus className="w-5 h-5 text-primary" />
+                  <h3 className="font-display text-md font-semibold text-foreground">
+                    Add Custom Source
+                  </h3>
+                  {isSaving && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="font-display text-sm text-muted-foreground mb-1.5 block">
+                      Feed URL
+                    </label>
+                    <Input
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder="https://example.com/rss.xml"
+                      className="bg-secondary/50 border-border font-display text-sm"
+                      disabled={isSaving}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-display text-sm text-muted-foreground mb-1.5 block">
+                      Name
+                    </label>
+                    <Input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder="My Feed"
+                      className="bg-secondary/50 border-border font-display text-sm"
+                      disabled={isSaving}
+                    />
+                  </div>
+
+                  <Button
+                    onClick={handleAdd}
+                    disabled={isSaving || !url.trim() || !name.trim()}
+                    className="w-full"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Source
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {currentCustomCount >= customSourceLimit && (
+              <div className="border-t border-border/50 pt-4">
+                <p className="text-sm text-muted-foreground text-center">
+                  You've reached your limit of {customSourceLimit} custom sources.
+                </p>
+              </div>
+            )}
+          </div>
+        </main>
+
+        <SourcePreviewDialog
+          source={previewSource}
+          open={previewSource !== null}
+          onOpenChange={(open) => !open && setPreviewSource(null)}
+        />
+      </div>
     </TooltipProvider>
   );
 }

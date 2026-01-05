@@ -51,7 +51,7 @@ export function GroupedSourcesDialog({
                 className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:border-primary/30 hover:bg-secondary/30 transition-colors group"
               >
                 <div className="flex items-center gap-3">
-                  <Badge variant="source">{article.feedName}</Badge>
+                  <Badge variant="source">{article.sourceName}</Badge>
                   <span className="text-sm text-muted-foreground">
                     {formatDistanceToNow(new Date(article.publishedAt), { addSuffix: true })}
                   </span>
