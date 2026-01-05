@@ -23,8 +23,8 @@ export interface Article {
   title: string;
   snippet: string;
   url: string;
-  feedId: string;
-  feedName: string;
+  sourceId: string;
+  sourceName: string;
   sentiment: Sentiment;
   score: number; // 0-100 sentiment score
   importanceScore?: number; // 0-100 importance/significance score
@@ -46,11 +46,45 @@ export interface UserPreferences {
   hiddenArticleIds: string[];
   articlesPerPage: number;
   sentimentFilters: Sentiment[]; // Active sentiment filters (empty = show all)
+  customSourceLimit: number; // Paid feature stub
   createdAt: string;
   updatedAt: string;
 }
 
-// Feed configuration
+// Source type
+export type SourceType = 'system' | 'custom';
+
+// Shared source configuration (replaces per-user Feed)
+export interface Source {
+  id: string;
+  url: string;
+  name: string;
+  type: SourceType;
+  isActive: boolean;
+  lastPolledAt?: string;
+  pollIntervalMinutes: number;
+  // Error tracking
+  lastError?: string;
+  consecutiveErrors: number;
+  lastSuccessAt?: string;
+  // For custom sources
+  addedByUserId?: string;
+  subscriberCount: number;
+}
+
+// User subscription to a source (controls visibility)
+export interface UserSourceSubscription {
+  id: string;
+  sourceId: string;
+  isEnabled: boolean;
+  // Denormalized for efficient queries
+  sourceName?: string;
+  sourceUrl?: string;
+  sourceType?: SourceType;
+  owner?: string;
+}
+
+// Legacy Feed type for backwards compatibility during migration
 export interface Feed {
   id: string;
   url: string;
@@ -59,7 +93,6 @@ export interface Feed {
   isPriority: boolean;
   lastPolledAt?: string;
   pollIntervalMinutes: number;
-  // Error tracking
   lastError?: string;
   consecutiveErrors: number;
   lastSuccessAt?: string;

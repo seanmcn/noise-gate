@@ -1,27 +1,47 @@
 import { a, defineData, type ClientSchema } from '@aws-amplify/backend';
 
 const schema = a.schema({
-  // Feed configuration (RSS sources to poll)
-  Feed: a
+  // Shared RSS sources (system defaults + user-added custom sources)
+  Source: a
     .model({
       url: a.string().required(),
       name: a.string().required(),
+      type: a.enum(['system', 'custom']),
       isActive: a.boolean().default(true),
-      isPriority: a.boolean().default(false),
       lastPolledAt: a.datetime(),
       pollIntervalMinutes: a.integer().default(15),
       // Error tracking
       lastError: a.string(),
       consecutiveErrors: a.integer().default(0),
       lastSuccessAt: a.datetime(),
+      // For custom sources - who originally added it
+      addedByUserId: a.string(),
+      // Reference count for garbage collection
+      subscriberCount: a.integer().default(0),
     })
+    .authorization((allow) => [
+      // All authenticated users can read and create sources (for custom feeds)
+      allow.authenticated().to(['read', 'create', 'update']),
+    ]),
+
+  // User subscriptions to sources (controls visibility)
+  UserSourceSubscription: a
+    .model({
+      sourceId: a.string().required(),
+      isEnabled: a.boolean().default(true),
+      // Denormalized for efficient queries
+      sourceName: a.string(),
+      sourceUrl: a.string(),
+      sourceType: a.enum(['system', 'custom']),
+    })
+    .secondaryIndexes((index) => [index('sourceId')])
     .authorization((allow) => [allow.owner()]),
 
   // Individual feed items
   FeedItem: a
     .model({
-      feedId: a.string().required(),
-      feedName: a.string().required(),
+      sourceId: a.string().required(),
+      sourceName: a.string().required(),
       externalId: a.string().required(),
       title: a.string().required(),
       url: a.string().required(),
@@ -67,10 +87,11 @@ const schema = a.schema({
 
       // Data retention
       expiresAt: a.integer(),      // Unix epoch for DynamoDB TTL
-      deletedFeedId: a.string(),   // Set when parent feed is deleted
+      deletedSourceId: a.string(), // Set when parent source is deleted
     })
     .secondaryIndexes((index) => [
       index('storyGroupId'),
+      index('sourceId'),
     ])
     .authorization((allow) => [
       // Lambda creates items, authenticated users can read/update
@@ -118,6 +139,8 @@ const schema = a.schema({
       hiddenArticleIds: a.json(),
       articlesPerPage: a.integer().default(12),
       sentimentFilters: a.json(), // Array of active sentiment filters
+      // Paid feature stub
+      customSourceLimit: a.integer().default(3),
     })
     .authorization((allow) => [allow.owner()]),
 });
