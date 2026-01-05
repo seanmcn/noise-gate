@@ -13,7 +13,6 @@ const docClient = DynamoDBDocumentClient.from(ddbClient);
 // Table names from environment variables
 const FEED_ITEM_TABLE = process.env.FEED_ITEM_TABLE_NAME || '';
 const STORY_GROUP_TABLE = process.env.STORY_GROUP_TABLE_NAME || '';
-const OWNER_ID = process.env.OWNER_ID || 'default-owner';
 
 /**
  * Get feed items that haven't been processed by AI yet.
@@ -32,12 +31,8 @@ export async function getUnprocessedItems(
         new ScanCommand({
           TableName: FEED_ITEM_TABLE,
           FilterExpression:
-            'attribute_not_exists(aiProcessedAt) AND #owner = :owner AND (attribute_not_exists(enrichmentStatus) OR enrichmentStatus = :completed OR enrichmentStatus = :failed OR enrichmentStatus = :skipped)',
-          ExpressionAttributeNames: {
-            '#owner': 'owner',
-          },
+            'attribute_not_exists(aiProcessedAt) AND (enrichmentStatus = :completed OR enrichmentStatus = :failed OR enrichmentStatus = :skipped)',
           ExpressionAttributeValues: {
-            ':owner': OWNER_ID,
             ':completed': 'completed',
             ':failed': 'failed',
             ':skipped': 'skipped',

@@ -7,14 +7,14 @@ import {
   getRecentStoryGroups,
   updateStoryGroupCount,
   createStoryGroupInDb,
-  getAllActiveFeeds,
-  updateFeedSuccess,
-  updateFeedError,
-  type DbFeed,
+  getAllActiveSources,
+  updateSourceSuccess,
+  updateSourceError,
+  type DbSource,
 } from './db';
 
 interface PollResult {
-  feedsProcessed: number;
+  sourcesProcessed: number;
   itemsFound: number;
   newItemsSaved: number;
   errors: string[];
@@ -24,18 +24,18 @@ export const handler: Handler = async (event): Promise<PollResult> => {
   console.log('RSS Poll triggered:', JSON.stringify(event));
 
   const results: PollResult = {
-    feedsProcessed: 0,
+    sourcesProcessed: 0,
     itemsFound: 0,
     newItemsSaved: 0,
     errors: [],
   };
 
-  // Get all active feeds from database
-  const feeds = await getAllActiveFeeds();
-  console.log(`Found ${feeds.length} active feeds to poll`);
+  // Get all active sources from database
+  const sources = await getAllActiveSources();
+  console.log(`Found ${sources.length} active sources to poll`);
 
-  if (feeds.length === 0) {
-    console.log('No active feeds configured');
+  if (sources.length === 0) {
+    console.log('No active sources configured');
     return results;
   }
 
@@ -48,25 +48,25 @@ export const handler: Handler = async (event): Promise<PollResult> => {
     console.error('Failed to fetch story groups:', error);
   }
 
-  for (const feed of feeds) {
+  for (const source of sources) {
     try {
-      console.log(`Processing feed: ${feed.name} (${feed.url})`);
+      console.log(`Processing source: ${source.name} (${source.url})`);
 
       // Fetch and parse RSS (auto-detects format)
-      const items = await fetchAndParseRSS(feed.url);
+      const items = await fetchAndParseRSS(source.url);
       results.itemsFound += items.length;
-      console.log(`Found ${items.length} items in ${feed.name}`);
+      console.log(`Found ${items.length} items in ${source.name}`);
 
       if (items.length === 0) {
-        // Still a success - feed responded but had no items
-        await updateFeedSuccess(feed.id);
-        results.feedsProcessed++;
+        // Still a success - source responded but had no items
+        await updateSourceSuccess(source.id);
+        results.sourcesProcessed++;
         continue;
       }
 
       // Get existing external IDs to avoid duplicates
       const externalIds = items.map((item) => item.externalId);
-      const existingIds = await getExistingExternalIds(feed.id, externalIds);
+      const existingIds = await getExistingExternalIds(source.id, externalIds);
       console.log(`${existingIds.size} items already exist`);
 
       // Process new items
@@ -95,8 +95,8 @@ export const handler: Handler = async (event): Promise<PollResult> => {
 
           // Save feed item
           await saveFeedItem({
-            feedId: feed.id,
-            feedName: feed.name,
+            sourceId: source.id,
+            sourceName: source.name,
             externalId: item.externalId,
             title: item.title,
             url: item.url,
@@ -113,16 +113,16 @@ export const handler: Handler = async (event): Promise<PollResult> => {
         }
       }
 
-      // Feed processed successfully
-      await updateFeedSuccess(feed.id);
-      results.feedsProcessed++;
+      // Source processed successfully
+      await updateSourceSuccess(source.id);
+      results.sourcesProcessed++;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`Failed to process feed ${feed.name}:`, message);
-      results.errors.push(`Feed ${feed.name}: ${message}`);
+      console.error(`Failed to process source ${source.name}:`, message);
+      results.errors.push(`Source ${source.name}: ${message}`);
 
-      // Track the error for this feed
-      await updateFeedError(feed.id, message);
+      // Track the error for this source
+      await updateSourceError(source.id, message);
     }
   }
 

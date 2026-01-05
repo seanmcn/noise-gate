@@ -14,19 +14,15 @@ const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 
 // Table names from environment variables (set by Amplify)
-const FEED_TABLE = process.env.FEED_TABLE_NAME || '';
+const SOURCE_TABLE = process.env.SOURCE_TABLE_NAME || '';
 const FEED_ITEM_TABLE = process.env.FEED_ITEM_TABLE_NAME || '';
 const STORY_GROUP_TABLE = process.env.STORY_GROUP_TABLE_NAME || '';
 
-// Owner ID for items (since this is a personal app, we use a fixed owner)
-// In a multi-user app, this would come from the authenticated user
-const OWNER_ID = process.env.OWNER_ID || 'default-owner';
-
 /**
- * Get existing external IDs for a feed to avoid duplicates.
+ * Get existing external IDs for a source to avoid duplicates.
  */
 export async function getExistingExternalIds(
-  feedId: string,
+  sourceId: string,
   externalIds: string[]
 ): Promise<Set<string>> {
   const existingIds = new Set<string>();
@@ -37,13 +33,9 @@ export async function getExistingExternalIds(
     const response = await docClient.send(
       new ScanCommand({
         TableName: FEED_ITEM_TABLE,
-        FilterExpression: 'feedId = :feedId AND #owner = :owner',
-        ExpressionAttributeNames: {
-          '#owner': 'owner',
-        },
+        FilterExpression: 'sourceId = :sourceId',
         ExpressionAttributeValues: {
-          ':feedId': feedId,
-          ':owner': OWNER_ID,
+          ':sourceId': sourceId,
         },
         ProjectionExpression: 'externalId',
         Limit: 500,
@@ -74,13 +66,9 @@ export async function getRecentStoryGroups(daysBack: number): Promise<StoryGroup
     const response = await docClient.send(
       new ScanCommand({
         TableName: STORY_GROUP_TABLE,
-        FilterExpression: 'firstSeenAt >= :cutoff AND #owner = :owner',
-        ExpressionAttributeNames: {
-          '#owner': 'owner',
-        },
+        FilterExpression: 'firstSeenAt >= :cutoff',
         ExpressionAttributeValues: {
           ':cutoff': cutoffIso,
-          ':owner': OWNER_ID,
         },
         Limit: 500,
       })
@@ -127,7 +115,6 @@ export async function createStoryGroupInDb(
         itemCount: 1,
         firstSeenAt: now,
         lastUpdatedAt: now,
-        owner: OWNER_ID,
         createdAt: now,
         updatedAt: now,
       },
@@ -166,8 +153,8 @@ const TTL_DAYS = 14;
  * Save a feed item to DynamoDB.
  */
 export async function saveFeedItem(item: {
-  feedId: string;
-  feedName: string;
+  sourceId: string;
+  sourceName: string;
   externalId: string;
   title: string;
   url: string;
@@ -188,8 +175,8 @@ export async function saveFeedItem(item: {
       TableName: FEED_ITEM_TABLE,
       Item: {
         id,
-        feedId: item.feedId,
-        feedName: item.feedName,
+        sourceId: item.sourceId,
+        sourceName: item.sourceName,
         externalId: item.externalId,
         title: item.title,
         url: item.url,
@@ -200,7 +187,6 @@ export async function saveFeedItem(item: {
         storyGroupId: item.storyGroupId,
         titleNormalized: item.titleNormalized,
         isHidden: false,
-        owner: OWNER_ID,
         createdAt: now,
         updatedAt: now,
       },
@@ -211,22 +197,22 @@ export async function saveFeedItem(item: {
 // Re-export for use in dedup.ts
 export { createStoryGroupInDb as createStoryGroup };
 
-export interface DbFeed {
+export interface DbSource {
   id: string;
   url: string;
   name: string;
-  owner: string;
+  type: 'system' | 'custom';
   isActive: boolean;
 }
 
 /**
- * Get all active feeds from all users.
+ * Get all active sources.
  */
-export async function getAllActiveFeeds(): Promise<DbFeed[]> {
+export async function getAllActiveSources(): Promise<DbSource[]> {
   try {
     const response = await docClient.send(
       new ScanCommand({
-        TableName: FEED_TABLE,
+        TableName: SOURCE_TABLE,
         FilterExpression: 'isActive = :active',
         ExpressionAttributeValues: {
           ':active': true,
@@ -238,26 +224,26 @@ export async function getAllActiveFeeds(): Promise<DbFeed[]> {
       id: item.id as string,
       url: item.url as string,
       name: item.name as string,
-      owner: item.owner as string,
+      type: (item.type as 'system' | 'custom') || 'system',
       isActive: item.isActive as boolean,
     }));
   } catch (error) {
-    console.error('Error fetching feeds:', error);
+    console.error('Error fetching sources:', error);
     return [];
   }
 }
 
 /**
- * Update feed after successful poll - clear errors, update timestamps.
+ * Update source after successful poll - clear errors, update timestamps.
  */
-export async function updateFeedSuccess(feedId: string): Promise<void> {
+export async function updateSourceSuccess(sourceId: string): Promise<void> {
   const now = new Date().toISOString();
 
   try {
     await docClient.send(
       new UpdateCommand({
-        TableName: FEED_TABLE,
-        Key: { id: feedId },
+        TableName: SOURCE_TABLE,
+        Key: { id: sourceId },
         UpdateExpression: `
           SET lastPolledAt = :now,
               lastSuccessAt = :now,
@@ -272,15 +258,15 @@ export async function updateFeedSuccess(feedId: string): Promise<void> {
       })
     );
   } catch (error) {
-    console.error(`Failed to update feed success for ${feedId}:`, error);
+    console.error(`Failed to update source success for ${sourceId}:`, error);
   }
 }
 
 /**
- * Update feed after failed poll - increment error count, set error message.
- * Auto-disables feed after 5 consecutive failures.
+ * Update source after failed poll - increment error count, set error message.
+ * Auto-disables source after 5 consecutive failures.
  */
-export async function updateFeedError(feedId: string, errorMessage: string): Promise<void> {
+export async function updateSourceError(sourceId: string, errorMessage: string): Promise<void> {
   const now = new Date().toISOString();
   const MAX_CONSECUTIVE_ERRORS = 5;
 
@@ -288,10 +274,10 @@ export async function updateFeedError(feedId: string, errorMessage: string): Pro
     // First, get current error count
     const getResponse = await docClient.send(
       new ScanCommand({
-        TableName: FEED_TABLE,
+        TableName: SOURCE_TABLE,
         FilterExpression: 'id = :id',
         ExpressionAttributeValues: {
-          ':id': feedId,
+          ':id': sourceId,
         },
         ProjectionExpression: 'consecutiveErrors',
         Limit: 1,
@@ -304,8 +290,8 @@ export async function updateFeedError(feedId: string, errorMessage: string): Pro
 
     await docClient.send(
       new UpdateCommand({
-        TableName: FEED_TABLE,
-        Key: { id: feedId },
+        TableName: SOURCE_TABLE,
+        Key: { id: sourceId },
         UpdateExpression: `
           SET lastPolledAt = :now,
               lastError = :error,
@@ -323,9 +309,9 @@ export async function updateFeedError(feedId: string, errorMessage: string): Pro
     );
 
     if (shouldDisable) {
-      console.log(`Feed ${feedId} auto-disabled after ${MAX_CONSECUTIVE_ERRORS} consecutive errors`);
+      console.log(`Source ${sourceId} auto-disabled after ${MAX_CONSECUTIVE_ERRORS} consecutive errors`);
     }
   } catch (error) {
-    console.error(`Failed to update feed error for ${feedId}:`, error);
+    console.error(`Failed to update source error for ${sourceId}:`, error);
   }
 }

@@ -11,7 +11,6 @@ const docClient = DynamoDBDocumentClient.from(ddbClient);
 
 // Table name from environment variables
 const FEED_ITEM_TABLE = process.env.FEED_ITEM_TABLE_NAME || '';
-const OWNER_ID = process.env.OWNER_ID || 'default-owner';
 
 export interface FeedItemForEnrichment {
   id: string;
@@ -37,14 +36,12 @@ export async function getUnenrichedItems(
         new ScanCommand({
           TableName: FEED_ITEM_TABLE,
           FilterExpression:
-            '(attribute_not_exists(enrichmentStatus) OR enrichmentStatus = :pending) AND #owner = :owner',
+            'attribute_not_exists(enrichmentStatus) OR enrichmentStatus = :pending',
           ExpressionAttributeNames: {
-            '#owner': 'owner',
             '#url': 'url',
           },
           ExpressionAttributeValues: {
             ':pending': 'pending',
-            ':owner': OWNER_ID,
           },
           ProjectionExpression: 'id, #url, title',
           ExclusiveStartKey: lastKey,

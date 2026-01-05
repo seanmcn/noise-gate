@@ -13,6 +13,7 @@ import { contentEnricherFunction } from './functions/content-enricher/resource';
 import { aiProcessorFunction } from './functions/ai-processor/resource';
 import { dataCleanupFunction } from './functions/data-cleanup/resource';
 import { feedPreviewFunction } from './functions/feed-preview/resource';
+import { sourceSeederFunction } from './functions/source-seeder/resource';
 
 const backend = defineBackend({
   auth,
@@ -22,6 +23,7 @@ const backend = defineBackend({
   aiProcessorFunction,
   dataCleanupFunction,
   feedPreviewFunction,
+  sourceSeederFunction,
 });
 
 // In production (has AWS_BRANCH), disable self-signup
@@ -37,7 +39,8 @@ const rssPollLambda = backend.rssPollFunction.resources.lambda;
 
 // Get table references from the data construct
 const tables = backend.data.resources.tables;
-const feedTable = tables['Feed'];
+const sourceTable = tables['Source'];
+const userSourceSubscriptionTable = tables['UserSourceSubscription'];
 const feedItemTable = tables['FeedItem'];
 const storyGroupTable = tables['StoryGroup'];
 
@@ -61,13 +64,13 @@ if (cfnFeedItemTable) {
 }
 
 // Grant read/write access to the tables
-feedTable.grantReadData(rssPollLambda);
+sourceTable.grantReadWriteData(rssPollLambda);
 feedItemTable.grantReadWriteData(rssPollLambda);
 storyGroupTable.grantReadWriteData(rssPollLambda);
 
 // Add table names as environment variables using the cfnFunction
 const cfnFunction = backend.rssPollFunction.resources.cfnResources.cfnFunction;
-cfnFunction.addPropertyOverride('Environment.Variables.FEED_TABLE_NAME', feedTable.tableName);
+cfnFunction.addPropertyOverride('Environment.Variables.SOURCE_TABLE_NAME', sourceTable.tableName);
 cfnFunction.addPropertyOverride('Environment.Variables.FEED_ITEM_TABLE_NAME', feedItemTable.tableName);
 cfnFunction.addPropertyOverride('Environment.Variables.STORY_GROUP_TABLE_NAME', storyGroupTable.tableName);
 
@@ -140,6 +143,23 @@ new Rule(dataCleanupStack, 'DataCleanupSchedule', {
       event: RuleTargetInput.fromObject({ action: 'full' }),
     }),
   ],
+});
+
+// === Source Seeder Function ===
+const sourceSeederLambda = backend.sourceSeederFunction.resources.lambda;
+
+// Grant read/write access to Source table
+sourceTable.grantReadWriteData(sourceSeederLambda);
+
+// Add table name as environment variable
+const sourceSeederCfnFunction = backend.sourceSeederFunction.resources.cfnResources.cfnFunction;
+sourceSeederCfnFunction.addPropertyOverride('Environment.Variables.SOURCE_TABLE_NAME', sourceTable.tableName);
+
+// Schedule source seeder to run daily (ensures system sources exist)
+const sourceSeederStack = backend.sourceSeederFunction.stack;
+new Rule(sourceSeederStack, 'SourceSeederSchedule', {
+  schedule: Schedule.rate(Duration.hours(24)),
+  targets: [new LambdaFunction(sourceSeederLambda)],
 });
 
 // === Feed Preview Function ===

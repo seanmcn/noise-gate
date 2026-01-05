@@ -1,14 +1,12 @@
 import { defineFunction } from '@aws-amplify/backend';
 
-export const rssPollFunction = defineFunction({
-  name: 'rss-poll',
+export const sourceSeederFunction = defineFunction({
+  name: 'source-seeder',
   entry: './handler.ts',
-  timeoutSeconds: 60,
-  memoryMB: 256,
+  timeoutSeconds: 30,
+  memoryMB: 128,
   environment: {
     // These will be overridden by backend.ts with actual table names
     SOURCE_TABLE_NAME: '',
-    FEED_ITEM_TABLE_NAME: '',
-    STORY_GROUP_TABLE_NAME: '',
   },
 });
