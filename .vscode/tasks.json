@@ -113,9 +113,19 @@
       }
     },
     {
-      "label": "Lambda: Invoke Both (RSS then AI)",
+      "label": "Lambda: Invoke Content Enricher",
       "type": "shell",
-      "command": "echo '=== RSS Poller ===' && FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'rsspoll')].FunctionName\" --output text) && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/rss-output.json && cat /tmp/rss-output.json && echo '\n=== AI Processor ===' && FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'aiprocessor')].FunctionName\" --output text) && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/ai-output.json && cat /tmp/ai-output.json",
+      "command": "FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'contentenricher')].FunctionName\" --output text) && echo \"Invoking $FUNC\" && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/enricher-output.json && cat /tmp/enricher-output.json",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "Lambda: Invoke All (RSS -> Enricher -> AI)",
+      "type": "shell",
+      "command": "echo '=== RSS Poller ===' && FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'rsspoll')].FunctionName\" --output text) && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/rss-output.json && cat /tmp/rss-output.json && echo '\n=== Content Enricher ===' && FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'contentenricher')].FunctionName\" --output text) && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/enricher-output.json && cat /tmp/enricher-output.json && echo '\n=== AI Processor ===' && FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'aiprocessor')].FunctionName\" --output text) && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/ai-output.json && cat /tmp/ai-output.json",
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",

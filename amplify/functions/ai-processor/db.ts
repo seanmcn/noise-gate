@@ -17,6 +17,7 @@ const OWNER_ID = process.env.OWNER_ID || 'default-owner';
 
 /**
  * Get feed items that haven't been processed by AI yet.
+ * Only processes items that have been enriched (or failed/skipped enrichment).
  * Uses pagination to find items across the entire table.
  */
 export async function getUnprocessedItems(
@@ -31,14 +32,17 @@ export async function getUnprocessedItems(
         new ScanCommand({
           TableName: FEED_ITEM_TABLE,
           FilterExpression:
-            'attribute_not_exists(aiProcessedAt) AND #owner = :owner',
+            'attribute_not_exists(aiProcessedAt) AND #owner = :owner AND (attribute_not_exists(enrichmentStatus) OR enrichmentStatus = :completed OR enrichmentStatus = :failed OR enrichmentStatus = :skipped)',
           ExpressionAttributeNames: {
             '#owner': 'owner',
           },
           ExpressionAttributeValues: {
             ':owner': OWNER_ID,
+            ':completed': 'completed',
+            ':failed': 'failed',
+            ':skipped': 'skipped',
           },
-          ProjectionExpression: 'id, title, content, storyGroupId',
+          ProjectionExpression: 'id, title, content, enrichedContent, storyGroupId',
           ExclusiveStartKey: lastKey,
         })
       );
@@ -48,6 +52,7 @@ export async function getUnprocessedItems(
           id: item.id as string,
           title: item.title as string,
           content: (item.content as string) || '',
+          enrichedContent: (item.enrichedContent as string) || undefined,
           storyGroupId: (item.storyGroupId as string) || '',
         });
         if (items.length >= limit) break;

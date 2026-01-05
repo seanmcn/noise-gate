@@ -9,6 +9,7 @@ import { FunctionUrlAuthType } from 'aws-cdk-lib/aws-lambda';
 import { auth } from './auth/resource';
 import { data } from './data/resource';
 import { rssPollFunction } from './functions/rss-poll/resource';
+import { contentEnricherFunction } from './functions/content-enricher/resource';
 import { aiProcessorFunction } from './functions/ai-processor/resource';
 import { dataCleanupFunction } from './functions/data-cleanup/resource';
 import { feedPreviewFunction } from './functions/feed-preview/resource';
@@ -17,6 +18,7 @@ const backend = defineBackend({
   auth,
   data,
   rssPollFunction,
+  contentEnricherFunction,
   aiProcessorFunction,
   dataCleanupFunction,
   feedPreviewFunction,
@@ -84,6 +86,21 @@ const rssPollStack = backend.rssPollFunction.stack;
 new Rule(rssPollStack, 'RssPollSchedule', {
   schedule: Schedule.rate(Duration.minutes(15)),
   targets: [new LambdaFunction(rssPollLambda)],
+});
+
+// === Content Enricher Function ===
+const contentEnricherLambda = backend.contentEnricherFunction.resources.lambda;
+feedItemTable.grantReadWriteData(contentEnricherLambda);
+
+// Add table name as environment variable for content enricher
+const contentEnricherCfnFunction = backend.contentEnricherFunction.resources.cfnResources.cfnFunction;
+contentEnricherCfnFunction.addPropertyOverride('Environment.Variables.FEED_ITEM_TABLE_NAME', feedItemTable.tableName);
+
+// Schedule content enricher to run every 3 minutes
+const contentEnricherStack = backend.contentEnricherFunction.stack;
+new Rule(contentEnricherStack, 'ContentEnricherSchedule', {
+  schedule: Schedule.rate(Duration.minutes(3)),
+  targets: [new LambdaFunction(contentEnricherLambda)],
 });
 
 // Schedule AI processor to run every 5 minutes

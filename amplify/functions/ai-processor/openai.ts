@@ -2,6 +2,7 @@ export interface FeedItemForClassification {
   id: string;
   title: string;
   content: string;
+  enrichedContent?: string;
   storyGroupId: string;
 }
 
@@ -70,13 +71,14 @@ export async function classifyBatch(
   }
 
   // Build the user prompt with items to classify
+  // Use enriched content when available, fall back to RSS content
   const userPrompt = `Classify these ${items.length} news items:
 
 ${items
   .map(
     (item) => `[${item.id}]
 Title: ${item.title}
-Summary: ${item.content?.slice(0, 300) || 'N/A'}`
+Summary: ${(item.enrichedContent || item.content)?.slice(0, 1000) || 'N/A'}`
   )
   .join('\n\n---\n\n')}`;
 

@@ -51,6 +51,12 @@ const schema = a.schema({
       summary: a.string(),
       aiProcessedAt: a.datetime(),
 
+      // Content enrichment (full article extraction)
+      enrichedContent: a.string(),
+      enrichmentStatus: a.enum(['pending', 'completed', 'failed', 'skipped']),
+      enrichedAt: a.datetime(),
+      enrichmentError: a.string(),
+
       // Deduplication
       storyGroupId: a.string(),
       titleNormalized: a.string(),
