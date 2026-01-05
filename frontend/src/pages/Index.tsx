@@ -125,7 +125,7 @@ const Index = ({ signOut, isAuthenticated = false }: IndexProps) => {
   return (
     <div className="min-h-screen bg-background">
       <Header signOut={signOut} isAuthenticated={isAuthenticated} />
-      <Hero />
+      {!isAuthenticated && <Hero />}
       <FilterBar
         categoryFilters={categoryFilters}
         onCategoryToggle={toggleCategory}

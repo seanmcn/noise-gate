@@ -26,8 +26,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Auth page at /auth
+// Auth page at /auth - redirects to home if already authenticated
 function AuthPage() {
+  const { authStatus } = useAuthenticator();
+
+  if (authStatus === 'authenticated') {
+    return <Navigate to="/" replace />;
+  }
+
   return (
     <AuthLayout>
       <Authenticator />
