@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Source, UserSourceSubscription } from '@minfeed/shared';
 import { dataApi } from '@/lib/data-api';
-import { useFeedStore } from './feedStore';
+import { queryClient } from '@/lib/query-client';
 
 interface SourcesState {
   sources: Source[];
@@ -123,8 +123,8 @@ export const useSourcesStore = create<SourcesState>((set, get) => ({
 
     try {
       await dataApi.updateSubscription(subscription.id, newEnabled);
-      // Reload articles to reflect subscription change
-      useFeedStore.getState().loadArticles();
+      // Invalidate feed cache to reflect subscription change
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
     } catch (err) {
       // Revert on failure
       set((state) => ({

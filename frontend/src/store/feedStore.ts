@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import type { Article, Sentiment, Category } from '@minfeed/shared';
-import { dataApi } from '@/lib/data-api';
 
 export type SortOption = 'newest' | 'importance';
 
@@ -34,10 +33,14 @@ interface FeedState {
   // Pagination
   currentPage: number;
 
-  // Actions
+  // Data actions (called by React Query sync)
+  setArticles: (articles: Article[]) => void;
+  setLoading: (isLoading: boolean) => void;
+  setError: (error: string | null) => void;
   setAuthenticated: (isAuthenticated: boolean) => void;
-  loadArticles: () => Promise<void>;
-  markAsSeen: (id: string) => Promise<void>;
+
+  // Article actions
+  markAsSeen: (id: string) => void;
 
   // Filter actions
   toggleSentiment: (sentiment: Sentiment) => void;
@@ -50,7 +53,7 @@ interface FeedState {
   resetFilters: () => void;
 }
 
-export const useFeedStore = create<FeedState>((set, get) => ({
+export const useFeedStore = create<FeedState>((set) => ({
   articles: [],
   isAuthenticated: false,
   isLoading: false,
@@ -62,46 +65,30 @@ export const useFeedStore = create<FeedState>((set, get) => ({
   collapseDuplicates: getStoredCollapseDuplicates(),
   currentPage: 1,
 
-  setAuthenticated: (isAuthenticated: boolean) => {
+  // Data actions (synced from React Query)
+  setArticles: (articles) => {
+    set({ articles, error: null });
+  },
+
+  setLoading: (isLoading) => {
+    set({ isLoading });
+  },
+
+  setError: (error) => {
+    set({ error });
+  },
+
+  setAuthenticated: (isAuthenticated) => {
     set({ isAuthenticated });
   },
 
-  loadArticles: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const { isAuthenticated } = get();
-      // Use public API for unauthenticated users, authenticated API otherwise
-      const articles = isAuthenticated
-        ? await dataApi.listFeedItems()
-        : await dataApi.listPublicFeedItems();
-      set({
-        articles,
-        isLoading: false,
-      });
-    } catch (err) {
-      set({
-        error: err instanceof Error ? err.message : 'Failed to load articles',
-        isLoading: false,
-      });
-    }
-  },
-
-  markAsSeen: async (id: string) => {
-    const { isAuthenticated } = get();
-    // Skip for unauthenticated users
-    if (!isAuthenticated) return;
-
-    try {
-      await dataApi.markItemSeen(id);
-      // Update local state optimistically
-      set((state) => ({
-        articles: state.articles.map((article) =>
-          article.id === id ? { ...article, seenAt: new Date().toISOString() } : article
-        ),
-      }));
-    } catch (err) {
-      console.error('Failed to mark item as seen:', err);
-    }
+  // Optimistic update for marking seen (actual API call is in useMarkSeenMutation)
+  markAsSeen: (id: string) => {
+    set((state) => ({
+      articles: state.articles.map((article) =>
+        article.id === id ? { ...article, seenAt: new Date().toISOString() } : article
+      ),
+    }));
   },
 
   toggleSentiment: (sentiment) => {

@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 import { useFeedStore } from '@/store/feedStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useSourcesStore } from '@/store/sourcesStore';
+import { useFeedQuery } from '@/hooks/useFeedQuery';
 import { authTheme } from '@/lib/amplify-theme';
 import { AuthLayout } from '@/components/AuthLayout';
 import { SEO } from '@/components/SEO';
@@ -50,28 +51,47 @@ function AppContent() {
   const { authStatus, signOut } = useAuthenticator();
   const isAuthenticated = authStatus === 'authenticated';
 
-  const loadArticles = useFeedStore((state) => state.loadArticles);
+  const setArticles = useFeedStore((state) => state.setArticles);
+  const setLoading = useFeedStore((state) => state.setLoading);
+  const setError = useFeedStore((state) => state.setError);
   const setAuthenticated = useFeedStore((state) => state.setAuthenticated);
   const setSentimentFilters = useFeedStore((state) => state.setSentimentFilters);
   const loadPreferences = useSettingsStore((state) => state.loadPreferences);
   const loadSources = useSourcesStore((state) => state.loadSources);
   const preferences = useSettingsStore((state) => state.preferences);
 
+  // Use React Query for feed data with caching
+  const { data: articles, isLoading, error } = useFeedQuery(isAuthenticated);
+
+  // Sync React Query state to feedStore for components that read from it
+  useEffect(() => {
+    setLoading(isLoading);
+  }, [isLoading, setLoading]);
+
+  useEffect(() => {
+    if (articles) {
+      setArticles(articles);
+    }
+  }, [articles, setArticles]);
+
+  useEffect(() => {
+    if (error) {
+      setError(error instanceof Error ? error.message : 'Failed to load articles');
+    }
+  }, [error, setError]);
+
   // Update auth state in store when it changes
   useEffect(() => {
     setAuthenticated(isAuthenticated);
   }, [isAuthenticated, setAuthenticated]);
 
+  // Load sources and preferences for authenticated users
   useEffect(() => {
     if (isAuthenticated) {
-      // Authenticated: load sources (creates subscriptions if needed), then articles and preferences
-      loadSources().then(() => loadArticles());
+      loadSources();
       loadPreferences();
-    } else {
-      // Public: just load articles (from system sources)
-      loadArticles();
     }
-  }, [isAuthenticated, loadSources, loadArticles, loadPreferences]);
+  }, [isAuthenticated, loadSources, loadPreferences]);
 
   // Sync sentiment filters from preferences to feed store (authenticated only)
   useEffect(() => {

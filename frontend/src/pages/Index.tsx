@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { ArrowDownWideNarrow, Clock, Zap, Eye, EyeOff } from 'lucide-react';
 import { SEO } from '@/components/SEO';
 import { Header } from '@/components/Header';
+import { useMarkSeenMutation } from '@/hooks/useFeedQuery';
 import { Hero } from '@/components/Hero';
 import { FilterBar } from '@/components/FilterBar';
 import { VuMeterFilter } from '@/components/VuMeterFilter';
@@ -42,6 +43,16 @@ const Index = ({ signOut, isAuthenticated = false }: IndexProps) => {
   } = useFeedStore();
 
   const { preferences } = useSettingsStore();
+  const markSeenMutation = useMarkSeenMutation();
+
+  // Wrap markAsSeen to call both local update and API
+  const handleMarkSeen = useCallback(
+    (id: string) => {
+      markAsSeen(id); // Immediate local update
+      markSeenMutation.mutate(id); // API call (only runs if authenticated via dataApi)
+    },
+    [markAsSeen, markSeenMutation]
+  );
 
   const blockedWords = useMemo(() => preferences?.blockedWords ?? [], [preferences?.blockedWords]);
 
@@ -115,7 +126,7 @@ const Index = ({ signOut, isAuthenticated = false }: IndexProps) => {
   // Keyboard navigation
   const { selectedIndex } = useKeyboardShortcuts({
     articles: filteredArticles,
-    onMarkSeen: markAsSeen,
+    onMarkSeen: handleMarkSeen,
     onShowHelp: () => setShowShortcutsHelp(true),
     pageSize,
     currentPage,
@@ -188,7 +199,7 @@ const Index = ({ signOut, isAuthenticated = false }: IndexProps) => {
           storyGroupCounts={storyGroupCounts}
           selectedIndex={selectedIndex}
           onPageChange={setPage}
-          onMarkSeen={markAsSeen}
+          onMarkSeen={handleMarkSeen}
           onShowGroupedSources={setSelectedStoryGroupId}
           pageSize={pageSize}
         />
@@ -197,7 +208,7 @@ const Index = ({ signOut, isAuthenticated = false }: IndexProps) => {
           open={selectedStoryGroupId !== null}
           onOpenChange={(open) => !open && setSelectedStoryGroupId(null)}
           articles={groupedArticles}
-          onMarkSeen={markAsSeen}
+          onMarkSeen={handleMarkSeen}
         />
 
         <KeyboardShortcutsHelp
