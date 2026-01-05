@@ -5,6 +5,7 @@ import { dataApi } from '@/lib/data-api';
 interface FeedsState {
   feeds: Feed[];
   isLoading: boolean;
+  isSeeding: boolean;
   isSaving: boolean;
   error: string | null;
 
@@ -19,6 +20,7 @@ interface FeedsState {
 export const useFeedsStore = create<FeedsState>((set, get) => ({
   feeds: [],
   isLoading: false,
+  isSeeding: false,
   isSaving: false,
   error: null,
 
@@ -27,9 +29,11 @@ export const useFeedsStore = create<FeedsState>((set, get) => ({
     try {
       let feeds = await dataApi.listFeeds();
 
-      // If no feeds exist, seed defaults
-      if (feeds.length === 0) {
+      // If no feeds exist and not already seeding, seed defaults
+      if (feeds.length === 0 && !get().isSeeding) {
+        set({ isSeeding: true });
         feeds = await dataApi.seedDefaultFeeds();
+        set({ isSeeding: false });
       }
 
       set({ feeds, isLoading: false });
@@ -37,6 +41,7 @@ export const useFeedsStore = create<FeedsState>((set, get) => ({
       set({
         error: err instanceof Error ? err.message : 'Failed to load feeds',
         isLoading: false,
+        isSeeding: false,
       });
     }
   },
