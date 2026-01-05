@@ -1,0 +1,30 @@
+{
+  "name": "MinFeed - Filter the noise, find the signal",
+  "short_name": "MinFeed",
+  "description": "AI-powered RSS aggregator with sentiment analysis and smart categorization",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0c10",
+  "theme_color": "#0ea5e9",
+  "orientation": "portrait-primary",
+  "categories": ["news", "productivity"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ]
+}
