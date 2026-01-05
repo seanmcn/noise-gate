@@ -42,7 +42,7 @@ const Index = ({ signOut, isAuthenticated = false }: IndexProps) => {
 
   const { preferences } = useSettingsStore();
 
-  const blockedWords = preferences?.blockedWords ?? [];
+  const blockedWords = useMemo(() => preferences?.blockedWords ?? [], [preferences?.blockedWords]);
 
   const [selectedStoryGroupId, setSelectedStoryGroupId] = useState<string | null>(null);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);

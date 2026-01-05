@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ExternalLink, Loader2, RefreshCw, Database, Rss } from 'lucide-react';
 import {
   Dialog,
@@ -39,14 +39,7 @@ export function SourcePreviewDialog({
   const [liveError, setLiveError] = useState<string | null>(null);
   const [liveItemCount, setLiveItemCount] = useState<number | null>(null);
 
-  // Load imported items when dialog opens
-  useEffect(() => {
-    if (open && source) {
-      loadImportedItems();
-    }
-  }, [open, source]);
-
-  const loadImportedItems = async () => {
+  const loadImportedItems = useCallback(async () => {
     if (!source) return;
     setIsLoadingImported(true);
     try {
@@ -57,7 +50,14 @@ export function SourcePreviewDialog({
     } finally {
       setIsLoadingImported(false);
     }
-  };
+  }, [source]);
+
+  // Load imported items when dialog opens
+  useEffect(() => {
+    if (open && source) {
+      loadImportedItems();
+    }
+  }, [open, source, loadImportedItems]);
 
   const testLiveFeed = async () => {
     if (!source) return;
