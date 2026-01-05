@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { Source, Article } from '@minfeed/shared';
 import { dataApi } from '@/lib/data-api';
+import { getCustomConfig } from '@/lib/amplify-config';
 import { formatDistanceToNow } from 'date-fns';
 
 interface PreviewItem {
@@ -65,9 +66,25 @@ export function SourcePreviewDialog({
     setLiveItems([]);
 
     try {
-      // For now, just show a message that live preview isn't available
-      // This would require a Lambda function to fetch and parse the RSS feed
-      setLiveError('Live preview not yet implemented');
+      const { feedPreviewUrl } = getCustomConfig();
+      if (!feedPreviewUrl) {
+        throw new Error('Feed preview not configured');
+      }
+
+      const response = await fetch(feedPreviewUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedUrl: source.url }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch feed');
+      }
+
+      setLiveItems(data.items || []);
+      setLiveItemCount(data.itemCount || data.items?.length || 0);
     } catch (err) {
       setLiveError(err instanceof Error ? err.message : 'Failed to fetch feed');
     } finally {
