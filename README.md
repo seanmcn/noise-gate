@@ -1,138 +1,161 @@
 # MinFeed
 
-An AI-assisted RSS content reader that filters, deduplicates, and sentiment-scores news from Reddit, BBC, and Hacker News.
+A minimal, AI-powered RSS reader that filters noise and surfaces what matters.
 
-## What it is
+## Overview
 
-- A **news aggregator** with AI-powered classification
-- **Deduplicates** stories across sources using title similarity
-- **Sentiment scoring** (positive/neutral/negative) via OpenAI GPT-4o-mini
-- **Category tagging** (world, tech, programming, science, business, local, health)
-- **Seen-state tracking** to dim articles you've already read
-- Designed for calm, focused news consumption
+MinFeed aggregates RSS feeds, deduplicates stories across sources, and uses AI to classify, score, and summarize each article. The result is a calm, keyboard-navigable feed where you control what you see.
 
-## What it is not
-
-- Not a social media feed
-- Not a real-time news ticker
-- Not optimised for breaking news or notifications
-
-This is a tool for catching up on news at your own pace.
+**Key capabilities:**
+- **AI Classification** — Category, sentiment, importance score, and summary for each article
+- **Story Deduplication** — Same story from multiple sources grouped together
+- **Custom Sources** — Add your own RSS feeds alongside system defaults
+- **Filtering** — By sentiment, category, or blocked keywords
+- **Keyboard Navigation** — Browse entirely with `j`/`k`/`o` keys
 
 ## Features
 
-- **AI Classification** - Each article is categorized and sentiment-scored
-- **Story Deduplication** - Same story from multiple sources grouped together
-- **Sentiment Filtering** - Show only good news, neutral, or bad news
-- **Category Filtering** - Focus on topics you care about
-- **Blocked Words** - Hide articles containing specific keywords
-- **Seen Tracking** - Articles dim after you've read them
-- **Hide Articles** - Manually hide stories you don't want to see
+### Feed Intelligence
+- **Sentiment Analysis** — Positive, neutral, or negative with confidence score
+- **Category Tagging** — World, Tech, Programming, Science, Business, Sports, Gaming, Entertainment, and more
+- **Importance Scoring** — 0-100 score highlighting significant stories
+- **AI Summaries** — TL;DR and "Why it matters" for each article
+
+### Source Management
+- **System Sources** — Curated defaults (BBC, Hacker News, Reddit tech subs)
+- **Custom Sources** — Add up to 3 personal RSS feeds
+- **Health Monitoring** — Auto-disables failing sources, shows error status
+- **Per-Source Toggle** — Enable/disable sources without removing them
+
+### Reading Experience
+- **Story Grouping** — Collapse duplicates to see one article per story
+- **Read Tracking** — Articles dim after you've opened them
+- **Hide Articles** — Manually hide stories you don't want
+- **Blocked Words** — Filter out topics by keyword
+
+### Keyboard Shortcuts
+| Key | Action |
+|-----|--------|
+| `j` | Next article |
+| `k` | Previous article |
+| `o` / `Enter` | Open article |
+| `m` | Mark as read |
+| `?` | Show shortcuts |
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Frontend (React)                         │
-│         Vite + TypeScript + Tailwind + shadcn/ui               │
+│                     Frontend (React + Vite)                      │
+│              TypeScript · Tailwind · Zustand · Radix UI          │
 └────────────────────────────────┬────────────────────────────────┘
-                                 │ Amplify Data API
+                                 │ AWS Amplify Data API
 ┌────────────────────────────────┼────────────────────────────────┐
-│                          DynamoDB                               │
-│     Feed  │  FeedItem  │  StoryGroup  │  UserPreferences       │
+│                           DynamoDB                               │
+│   Source · UserSourceSubscription · FeedItem · StoryGroup        │
+│                      UserPreferences                             │
 └────────────────────────────────┬────────────────────────────────┘
                                  │
 ┌────────────────────────────────┼────────────────────────────────┐
-│                     Lambda Functions                            │
-│  ┌─────────────────────────┐  ┌─────────────────────────────┐  │
-│  │    RSS Poller           │  │    AI Processor             │  │
-│  │  - Fetches RSS feeds    │  │  - OpenAI GPT-4o-mini       │  │
-│  │  - Deduplicates stories │  │  - Batch classification     │  │
-│  └─────────────────────────┘  └─────────────────────────────┘  │
+│                      Lambda Functions                            │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
+│  │  RSS Poller  │  │ AI Processor │  │   Content    │           │
+│  │              │  │              │  │   Enricher   │           │
+│  │ Fetches and  │  │ Classifies,  │  │              │           │
+│  │ deduplicates │  │ scores, and  │  │ Extracts     │           │
+│  │ RSS feeds    │  │ summarizes   │  │ full article │           │
+│  └──────────────┘  └──────────────┘  └──────────────┘           │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
+│  │    Source    │  │     Feed     │  │     Data     │           │
+│  │    Seeder    │  │    Preview   │  │    Cleanup   │           │
+│  └──────────────┘  └──────────────┘  └──────────────┘           │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Self-Hosting
 
-MinFeed is self-hosted using AWS Amplify. You'll need:
-
+MinFeed runs on AWS Amplify. You'll need:
 - Node.js 20+
-- An AWS account
-- An OpenAI API key
+- AWS account
+- OpenAI API key
 
 ### Quick Start
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+```bash
+# Install dependencies
+npm install
 
-2. Copy `.env.local.example` to `.env.local` and add your OpenAI API key:
-   ```bash
-   cp .env.local.example .env.local
-   # Edit .env.local with your key
-   ```
+# Configure OpenAI key
+cp .env.local.example .env.local
+# Edit .env.local with your OPENAI_API_KEY
 
-3. Start the development environment:
-   ```bash
-   npm run dev
-   ```
+# Start development environment
+npm run dev
+```
 
-4. Open http://localhost:5173
-
-The sandbox secrets are automatically set from `.env.local` when starting the sandbox.
+Open http://localhost:3000
 
 ### VSCode Tasks
 
-If using VSCode, run tasks from the Command Palette (Cmd+Shift+P → "Tasks: Run Task"):
+Run from Command Palette (`Cmd+Shift+P` → "Tasks: Run Task"):
 
-- **Dev: Start All** - Start both sandbox and frontend (auto-sets secrets)
-- **Sandbox: Start** - Start the Amplify sandbox (auto-sets secrets)
-- **Sandbox: Reset** - Delete sandbox and recreate (auto-sets secrets)
-- **Frontend: Start** - Start just the frontend dev server
-- **Build: All** - Build all workspaces
-- **Data: Clear All** - Clear all data from DynamoDB tables
+| Task | Description |
+|------|-------------|
+| Dev: Start All | Start sandbox + frontend |
+| Sandbox: Start | Start Amplify sandbox only |
+| Sandbox: Reset | Delete and recreate sandbox |
+| Frontend: Start | Start frontend dev server |
+| Data: Clear All | Clear all DynamoDB data |
+| Data: Seed Sources | Seed system RSS sources |
 
 ## Project Structure
 
 ```
 min-feed/
 ├── amplify/
-│   ├── auth/resource.ts           # Cognito email auth
-│   ├── data/resource.ts           # DynamoDB schema
+│   ├── auth/resource.ts              # Cognito authentication
+│   ├── data/resource.ts              # DynamoDB schema
 │   ├── functions/
-│   │   ├── rss-poll/              # RSS ingestion Lambda
-│   │   └── ai-processor/          # AI classification Lambda
+│   │   ├── rss-poll/                 # RSS fetching & deduplication
+│   │   ├── ai-processor/             # OpenAI classification
+│   │   ├── content-enricher/         # Article content extraction
+│   │   ├── feed-preview/             # Preview feeds before adding
+│   │   ├── source-seeder/            # Seed default sources
+│   │   └── data-cleanup/             # TTL and orphan cleanup
 │   └── backend.ts
 ├── frontend/
 │   ├── src/
-│   │   ├── components/            # UI components
-│   │   ├── lib/                   # API, auth, utils
-│   │   ├── store/                 # Zustand stores
-│   │   └── pages/                 # Route pages
+│   │   ├── components/               # UI components
+│   │   ├── pages/                    # Route pages
+│   │   ├── store/                    # Zustand state
+│   │   └── lib/                      # API, auth, utilities
 │   └── package.json
 ├── shared/
-│   └── src/index.ts               # Shared types
-└── package.json                   # Workspace root
+│   └── src/index.ts                  # Shared types
+└── package.json                      # Workspace root
 ```
 
-## RSS Feeds
+## Default Sources
 
-Currently configured to poll:
+System sources seeded on first run:
+- **Hacker News** — Front page
+- **BBC News** — Top stories
+- **BBC Technology** — Tech news
+- **Reddit** — r/technology, r/programming
 
-- **Reddit** - /r/worldnews, /r/technology, /r/programming
-- **BBC** - Top stories
-- **Hacker News** - Front page
+## Cost Estimate
 
-## Cost Estimate (Personal Use)
+For personal use (~100 articles/day):
+- **OpenAI API**: ~$0.20/month (GPT-4o-mini batch processing)
+- **AWS Amplify**: Free tier
+- **Total**: < $1/month
 
-- **OpenAI API**: ~$0.20/month (100 items/day, batched with GPT-4o-mini)
-- **AWS Amplify**: Free tier covers personal use
-- **Total**: <$1/month
+## Tech Stack
 
-## Status
-
-Early MVP built for personal use. Works, but intentionally minimal.
+**Frontend:** React, TypeScript, Vite, Tailwind, Zustand, Radix UI
+**Backend:** AWS Lambda, DynamoDB, AppSync, Amplify
+**AI:** OpenAI GPT-4o-mini
+**Content:** Mozilla Readability, Linkedom
 
 ## License
 
