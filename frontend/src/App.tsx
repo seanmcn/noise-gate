@@ -1,13 +1,15 @@
-import { Authenticator, useAuthenticator } from '@aws-amplify/ui-react';
+import { Authenticator, useAuthenticator, ThemeProvider } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useFeedStore } from '@/store/feedStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useSourcesStore } from '@/store/sourcesStore';
+import { authTheme } from '@/lib/amplify-theme';
+import { AuthLayout } from '@/components/AuthLayout';
 import Index from './pages/Index';
 import Settings from './pages/Settings';
 import Sources from './pages/Sources';
@@ -24,19 +26,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Login page wrapper
-function LoginPage() {
+// Auth page at /auth
+function AuthPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <AuthLayout>
       <Authenticator />
-    </div>
+    </AuthLayout>
   );
 }
 
 function AppContent() {
   const { authStatus, signOut } = useAuthenticator();
   const isAuthenticated = authStatus === 'authenticated';
-  const [showLogin, setShowLogin] = useState(false);
 
   const loadArticles = useFeedStore((state) => state.loadArticles);
   const setAuthenticated = useFeedStore((state) => state.setAuthenticated);
@@ -68,23 +69,6 @@ function AppContent() {
     }
   }, [isAuthenticated, preferences?.sentimentFilters, setSentimentFilters]);
 
-  // Show login modal
-  if (showLogin && !isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-full max-w-md">
-          <button
-            onClick={() => setShowLogin(false)}
-            className="mb-4 text-sm text-muted-foreground hover:text-foreground"
-          >
-            ← Back to feed
-          </button>
-          <Authenticator />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <TooltipProvider>
       <Toaster />
@@ -96,10 +80,13 @@ function AppContent() {
             element={
               <Index
                 signOut={isAuthenticated ? signOut : undefined}
-                onLogin={() => setShowLogin(true)}
                 isAuthenticated={isAuthenticated}
               />
             }
+          />
+          <Route
+            path="/auth"
+            element={<AuthPage />}
           />
           <Route
             path="/settings"
@@ -117,7 +104,6 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          <Route path="/login" element={<LoginPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
@@ -127,8 +113,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <Authenticator.Provider>
-      <AppContent />
-    </Authenticator.Provider>
+    <ThemeProvider theme={authTheme}>
+      <Authenticator.Provider>
+        <AppContent />
+      </Authenticator.Provider>
+    </ThemeProvider>
   );
 }

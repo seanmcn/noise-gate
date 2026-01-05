@@ -20,11 +20,10 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 
 interface IndexProps {
   signOut?: () => void;
-  onLogin?: () => void;
   isAuthenticated?: boolean;
 }
 
-const Index = ({ signOut, onLogin, isAuthenticated = false }: IndexProps) => {
+const Index = ({ signOut, isAuthenticated = false }: IndexProps) => {
   const {
     articles,
     isLoading,
@@ -125,7 +124,7 @@ const Index = ({ signOut, onLogin, isAuthenticated = false }: IndexProps) => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header signOut={signOut} onLogin={onLogin} isAuthenticated={isAuthenticated} />
+      <Header signOut={signOut} isAuthenticated={isAuthenticated} />
       <Hero />
       <FilterBar
         categoryFilters={categoryFilters}

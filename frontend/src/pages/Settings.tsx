@@ -54,7 +54,7 @@ export function Settings({ signOut }: SettingsProps) {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Header signOut={signOut} />
+        <Header signOut={signOut} isAuthenticated />
         <div className="container mx-auto px-4 py-16 flex justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
@@ -64,7 +64,7 @@ export function Settings({ signOut }: SettingsProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header signOut={signOut} />
+      <Header signOut={signOut} isAuthenticated />
 
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         <div className="mb-8">
