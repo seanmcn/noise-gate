@@ -5,6 +5,7 @@ import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useFeedStore } from '@/store/feedStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useFeedQuery, useSourcesQuery } from '@/hooks/useFeedQuery';
@@ -71,6 +72,12 @@ function AppContent() {
   const setSentimentFilters = useFeedStore((state) => state.setSentimentFilters);
   const loadPreferences = useSettingsStore((state) => state.loadPreferences);
   const preferences = useSettingsStore((state) => state.preferences);
+  const queryClient = useQueryClient();
+
+  // Invalidate feed cache when auth status changes to ensure fresh data
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['feed'] });
+  }, [isAuthenticated, queryClient]);
 
   // Prefetch sources for authenticated users (cached for Sources page)
   useSourcesQuery(isAuthenticated);
