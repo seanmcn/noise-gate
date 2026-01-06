@@ -95,7 +95,7 @@
     {
       "label": "Lambda: Invoke RSS Poller",
       "type": "shell",
-      "command": "FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'rsspoll')].FunctionName\" --output text) && echo \"Invoking $FUNC\" && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/rss-poll-output.json && cat /tmp/rss-poll-output.json",
+      "command": "FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'minfeed') && contains(FunctionName, 'rsspoll')].FunctionName\" --output text) && echo \"Invoking $FUNC\" && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/rss-poll-output.json && cat /tmp/rss-poll-output.json",
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",
@@ -105,7 +105,7 @@
     {
       "label": "Lambda: Invoke AI Processor",
       "type": "shell",
-      "command": "FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'aiprocessor')].FunctionName\" --output text) && echo \"Invoking $FUNC\" && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/ai-processor-output.json && cat /tmp/ai-processor-output.json",
+      "command": "FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'minfeed') && contains(FunctionName, 'aiprocessor')].FunctionName\" --output text) && echo \"Invoking $FUNC\" && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/ai-processor-output.json && cat /tmp/ai-processor-output.json",
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",
@@ -115,7 +115,7 @@
     {
       "label": "Lambda: Invoke Content Enricher",
       "type": "shell",
-      "command": "FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'contentenricher')].FunctionName\" --output text) && echo \"Invoking $FUNC\" && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/enricher-output.json && cat /tmp/enricher-output.json",
+      "command": "FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'minfeed') && contains(FunctionName, 'contentenricher')].FunctionName\" --output text) && echo \"Invoking $FUNC\" && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/enricher-output.json && cat /tmp/enricher-output.json",
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",
@@ -125,7 +125,7 @@
     {
       "label": "Lambda: Invoke All (RSS -> Enricher -> AI)",
       "type": "shell",
-      "command": "echo '=== RSS Poller ===' && FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'rsspoll')].FunctionName\" --output text) && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/rss-output.json && cat /tmp/rss-output.json && echo '\n=== Content Enricher ===' && FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'contentenricher')].FunctionName\" --output text) && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/enricher-output.json && cat /tmp/enricher-output.json && echo '\n=== AI Processor ===' && FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'aiprocessor')].FunctionName\" --output text) && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/ai-output.json && cat /tmp/ai-output.json",
+      "command": "echo '=== RSS Poller ===' && FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'minfeed') && contains(FunctionName, 'rsspoll')].FunctionName\" --output text) && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/rss-output.json && cat /tmp/rss-output.json && echo '\n=== Content Enricher ===' && FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'minfeed') && contains(FunctionName, 'contentenricher')].FunctionName\" --output text) && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/enricher-output.json && cat /tmp/enricher-output.json && echo '\n=== AI Processor ===' && FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'minfeed') && contains(FunctionName, 'aiprocessor')].FunctionName\" --output text) && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/ai-output.json && cat /tmp/ai-output.json",
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",
@@ -155,7 +155,7 @@
     {
       "label": "Data: Cleanup Now",
       "type": "shell",
-      "command": "FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'datacleanup')].FunctionName\" --output text) && echo \"Invoking $FUNC\" && aws lambda invoke --function-name $FUNC --payload '{\"action\": \"full\"}' --cli-binary-format raw-in-base64-out /tmp/cleanup-output.json && cat /tmp/cleanup-output.json",
+      "command": "FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'minfeed') && contains(FunctionName, 'datacleanup')].FunctionName\" --output text) && echo \"Invoking $FUNC\" && aws lambda invoke --function-name $FUNC --payload '{\"action\": \"full\"}' --cli-binary-format raw-in-base64-out /tmp/cleanup-output.json && cat /tmp/cleanup-output.json",
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",
@@ -165,7 +165,7 @@
     {
       "label": "Data: Seed System Sources",
       "type": "shell",
-      "command": "FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'sourceseeder')].FunctionName\" --output text) && echo \"Invoking $FUNC\" && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/seeder-output.json && cat /tmp/seeder-output.json",
+      "command": "FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'minfeed') && contains(FunctionName, 'sourceseeder')].FunctionName\" --output text) && echo \"Invoking $FUNC\" && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/seeder-output.json && cat /tmp/seeder-output.json",
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",
