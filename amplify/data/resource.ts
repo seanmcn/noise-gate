@@ -145,6 +145,7 @@ const schema = a.schema({
       hiddenArticleIds: a.json(),
       articlesPerPage: a.integer().default(12),
       sentimentFilters: a.json(), // Array of active sentiment filters
+      timeRange: a.enum(['today', 'yesterday', 'last7days', 'last14days']),
       // Paid feature stub
       customSourceLimit: a.integer().default(3),
     })

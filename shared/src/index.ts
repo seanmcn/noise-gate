@@ -1,6 +1,9 @@
 // Sentiment types
 export type Sentiment = 'positive' | 'neutral' | 'negative';
 
+// Time range filter types
+export type TimeRange = 'today' | 'yesterday' | 'last7days' | 'last14days';
+
 // Category types
 export type Category =
   | 'world'
@@ -46,6 +49,7 @@ export interface UserPreferences {
   hiddenArticleIds: string[];
   articlesPerPage: number;
   sentimentFilters: Sentiment[]; // Active sentiment filters (empty = show all)
+  timeRange: TimeRange; // Time range filter for feed
   customSourceLimit: number; // Paid feature stub
   createdAt: string;
   updatedAt: string;

@@ -6,6 +6,7 @@ import { useMarkSeenMutation } from '@/hooks/useFeedQuery';
 import { Hero } from '@/components/Hero';
 import { FilterBar } from '@/components/FilterBar';
 import { VuMeterFilter } from '@/components/VuMeterFilter';
+import { TimeRangeFilter } from '@/components/TimeRangeFilter';
 import { NewsFeed } from '@/components/NewsFeed';
 import { GroupedSourcesDialog } from '@/components/GroupedSourcesDialog';
 import { KeyboardShortcutsHelp } from '@/components/KeyboardShortcutsHelp';
@@ -21,6 +22,7 @@ import { useFeedStore, type SortOption } from '@/store/feedStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useTour } from '@/hooks/useTour';
+import type { TimeRange } from '@minfeed/shared';
 
 interface IndexProps {
   signOut?: () => void;
@@ -36,15 +38,17 @@ const Index = ({ signOut, isAuthenticated = false }: IndexProps) => {
     showHidden,
     sortBy,
     collapseDuplicates,
+    timeRange,
     currentPage,
     toggleCategory,
     toggleShowHidden,
     setSortBy,
+    setTimeRange: setFeedTimeRange,
     setPage,
     markAsSeen,
   } = useFeedStore();
 
-  const { preferences } = useSettingsStore();
+  const { preferences, setTimeRange: setPreferencesTimeRange } = useSettingsStore();
   const markSeenMutation = useMarkSeenMutation();
 
   // Wrap markAsSeen to call both local update and API
@@ -57,6 +61,36 @@ const Index = ({ signOut, isAuthenticated = false }: IndexProps) => {
   );
 
   const blockedWords = useMemo(() => preferences?.blockedWords ?? [], [preferences?.blockedWords]);
+
+  // Helper to get time range boundaries
+  const getTimeRangeBoundary = useCallback((range: TimeRange): Date => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    switch (range) {
+      case 'today':
+        return startOfToday;
+      case 'yesterday':
+        return new Date(startOfToday.getTime() - 24 * 60 * 60 * 1000);
+      case 'last7days':
+        return new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000);
+      case 'last14days':
+        return new Date(startOfToday.getTime() - 14 * 24 * 60 * 60 * 1000);
+      default:
+        return startOfToday;
+    }
+  }, []);
+
+  // Handle time range change - update local store and save to preferences for auth users
+  const handleTimeRangeChange = useCallback(
+    (range: TimeRange) => {
+      setFeedTimeRange(range);
+      if (isAuthenticated) {
+        setPreferencesTimeRange(range);
+      }
+    },
+    [isAuthenticated, setFeedTimeRange, setPreferencesTimeRange]
+  );
 
   const [selectedStoryGroupId, setSelectedStoryGroupId] = useState<string | null>(null);
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
@@ -84,7 +118,13 @@ const Index = ({ signOut, isAuthenticated = false }: IndexProps) => {
   }, [articles, selectedStoryGroupId]);
 
   const filteredArticles = useMemo(() => {
+    const timeRangeBoundary = getTimeRangeBoundary(timeRange);
+
     const filtered = articles.filter((article) => {
+      // Time range filtering
+      const publishedDate = new Date(article.publishedAt);
+      if (publishedDate < timeRangeBoundary) return false;
+
       if (sentimentFilters.length > 0 && !sentimentFilters.includes(article.sentiment)) return false;
       if (categoryFilters.length > 0 && !categoryFilters.includes(article.category)) return false;
       const content = `${article.title} ${article.snippet}`.toLowerCase();
@@ -123,7 +163,7 @@ const Index = ({ signOut, isAuthenticated = false }: IndexProps) => {
     }
 
     return sorted;
-  }, [articles, sentimentFilters, categoryFilters, blockedWords, showHidden, sortBy, collapseDuplicates]);
+  }, [articles, sentimentFilters, categoryFilters, blockedWords, showHidden, sortBy, collapseDuplicates, timeRange, getTimeRangeBoundary]);
 
   const visibleCount = filteredArticles.length;
   const totalPages = Math.ceil(visibleCount / pageSize);
@@ -175,6 +215,8 @@ const Index = ({ signOut, isAuthenticated = false }: IndexProps) => {
               </Button>
             )}
 
+            <TimeRangeFilter value={timeRange} onChange={handleTimeRangeChange} />
+
             <div data-tour="sort">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -209,6 +251,8 @@ const Index = ({ signOut, isAuthenticated = false }: IndexProps) => {
           currentPage={currentPage}
           storyGroupCounts={storyGroupCounts}
           selectedIndex={selectedIndex}
+          isLoading={isLoading}
+          isAuthenticated={isAuthenticated}
           onPageChange={setPage}
           onMarkSeen={handleMarkSeen}
           onShowGroupedSources={setSelectedStoryGroupId}

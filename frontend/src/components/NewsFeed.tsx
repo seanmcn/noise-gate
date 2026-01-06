@@ -1,7 +1,8 @@
+import { Link } from 'react-router-dom';
 import { ArticleCard } from './ArticleCard';
 import { Pagination } from './Pagination';
 import { Article } from '@/types/article';
-import { Newspaper } from 'lucide-react';
+import { Newspaper, Loader2 } from 'lucide-react';
 
 interface NewsFeedProps {
   articles: Article[];
@@ -9,6 +10,8 @@ interface NewsFeedProps {
   storyGroupCounts: Record<string, number>;
   prioritySourceIds?: Set<string>;
   selectedIndex?: number | null;
+  isLoading?: boolean;
+  isAuthenticated?: boolean;
   onPageChange: (page: number) => void;
   onMarkSeen: (id: string) => void;
   onShowGroupedSources: (storyGroupId: string) => void;
@@ -21,6 +24,8 @@ export function NewsFeed({
   storyGroupCounts,
   prioritySourceIds,
   selectedIndex,
+  isLoading = false,
+  isAuthenticated = false,
   onPageChange,
   onMarkSeen,
   onShowGroupedSources,
@@ -32,6 +37,19 @@ export function NewsFeed({
     currentPage * pageSize
   );
 
+  // Show loading state
+  if (isLoading && articles.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <Loader2 className="w-12 h-12 text-muted-foreground mx-auto mb-4 animate-spin" />
+        <h3 className="font-display text-lg text-muted-foreground mb-2">
+          Loading articles...
+        </h3>
+      </div>
+    );
+  }
+
+  // Show empty state (different messaging based on auth status)
   if (articles.length === 0) {
     return (
       <div className="text-center py-16">
@@ -39,9 +57,19 @@ export function NewsFeed({
         <h3 className="font-display text-lg text-muted-foreground mb-2">
           No articles match your filters
         </h3>
-        <p className="text-sm text-muted-foreground/70">
-          Try adjusting your filters or enable "Show read" to see read articles
-        </p>
+        {isAuthenticated ? (
+          <p className="text-sm text-muted-foreground/70">
+            Try adjusting your filters or enable "Show read" to see read articles
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground/70">
+            Try adjusting your filters or{' '}
+            <Link to="/sources" className="text-primary hover:underline">
+              browse our sources
+            </Link>{' '}
+            to find content you like
+          </p>
+        )}
       </div>
     );
   }

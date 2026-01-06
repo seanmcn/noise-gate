@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { UserPreferences, Sentiment } from '@minfeed/shared';
+import type { UserPreferences, Sentiment, TimeRange } from '@minfeed/shared';
 import { dataApi } from '@/lib/data-api';
 
 interface SettingsState {
@@ -14,6 +14,7 @@ interface SettingsState {
   clearBlockedWords: () => Promise<void>;
   setArticlesPerPage: (size: number) => Promise<void>;
   setSentimentFilters: (filters: Sentiment[]) => Promise<void>;
+  setTimeRange: (range: TimeRange) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -123,6 +124,25 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const updated = await dataApi.putPreferences({
         ...preferences,
         sentimentFilters: filters,
+      });
+      set({ preferences: updated, isSaving: false });
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : 'Failed to save',
+        isSaving: false,
+      });
+    }
+  },
+
+  setTimeRange: async (range: TimeRange) => {
+    const { preferences } = get();
+    if (!preferences) return;
+
+    set({ isSaving: true });
+    try {
+      const updated = await dataApi.putPreferences({
+        ...preferences,
+        timeRange: range,
       });
       set({ preferences: updated, isSaving: false });
     } catch (err) {

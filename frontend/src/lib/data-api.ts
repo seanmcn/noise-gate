@@ -1,6 +1,6 @@
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
-import type { Article, UserPreferences, Source, UserSourceSubscription, Sentiment, Category, SourceType } from '@minfeed/shared';
+import type { Article, UserPreferences, Source, UserSourceSubscription, Sentiment, Category, SourceType, TimeRange } from '@minfeed/shared';
 import { authService } from './auth-service';
 
 // Lazy-initialized clients (created after Amplify is configured)
@@ -182,6 +182,7 @@ export const dataApi = {
         hiddenArticleIds: parseJsonField<string[]>(record.hiddenArticleIds, []),
         articlesPerPage: (record.articlesPerPage as number) || 12,
         sentimentFilters: parseJsonField<Sentiment[]>(record.sentimentFilters, []),
+        timeRange: (record.timeRange as TimeRange) || 'today',
         customSourceLimit: (record.customSourceLimit as number) || 3,
         createdAt: record.createdAt as string,
         updatedAt: record.updatedAt as string,
@@ -196,6 +197,7 @@ export const dataApi = {
       hiddenArticleIds: [],
       articlesPerPage: 12,
       sentimentFilters: [],
+      timeRange: 'today',
       customSourceLimit: 3,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -222,6 +224,7 @@ export const dataApi = {
         hiddenArticleIds: JSON.stringify(prefs.hiddenArticleIds),
         articlesPerPage: prefs.articlesPerPage,
         sentimentFilters: JSON.stringify(prefs.sentimentFilters),
+        timeRange: prefs.timeRange,
       });
       if (errors?.length) throw new Error(errors[0].message);
       result = data;
@@ -232,6 +235,7 @@ export const dataApi = {
         hiddenArticleIds: JSON.stringify(prefs.hiddenArticleIds),
         articlesPerPage: prefs.articlesPerPage,
         sentimentFilters: JSON.stringify(prefs.sentimentFilters),
+        timeRange: prefs.timeRange,
       });
       if (errors?.length) throw new Error(errors[0].message);
       result = data;
@@ -248,6 +252,7 @@ export const dataApi = {
       hiddenArticleIds: parseJsonField<string[]>(result.hiddenArticleIds, []),
       articlesPerPage: (result.articlesPerPage as number) || 12,
       sentimentFilters: parseJsonField<Sentiment[]>(result.sentimentFilters, []),
+      timeRange: (result.timeRange as TimeRange) || 'today',
       customSourceLimit: (result.customSourceLimit as number) || 3,
       createdAt: result.createdAt as string,
       updatedAt: result.updatedAt as string,

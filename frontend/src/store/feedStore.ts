@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import type { Article, Sentiment, Category } from '@minfeed/shared';
+import type { Article, Sentiment, Category, TimeRange } from '@minfeed/shared';
 
 export type SortOption = 'newest' | 'importance';
+export type { TimeRange };
 
 // Load collapseDuplicates from localStorage
 const getStoredCollapseDuplicates = (): boolean => {
@@ -9,6 +10,19 @@ const getStoredCollapseDuplicates = (): boolean => {
     return localStorage.getItem('collapseDuplicates') === 'true';
   } catch {
     return true; // Default to collapsed
+  }
+};
+
+// Load timeRange from localStorage (for unauthenticated users)
+const getStoredTimeRange = (): TimeRange => {
+  try {
+    const stored = localStorage.getItem('timeRange');
+    if (stored && ['today', 'yesterday', 'last7days', 'last14days'].includes(stored)) {
+      return stored as TimeRange;
+    }
+    return 'today';
+  } catch {
+    return 'today';
   }
 };
 
@@ -29,6 +43,7 @@ interface FeedState {
   showHidden: boolean;
   sortBy: SortOption;
   collapseDuplicates: boolean;
+  timeRange: TimeRange;
 
   // Pagination
   currentPage: number;
@@ -49,6 +64,7 @@ interface FeedState {
   toggleShowHidden: () => void;
   setSortBy: (sort: SortOption) => void;
   setCollapseDuplicates: (collapse: boolean) => void;
+  setTimeRange: (range: TimeRange) => void;
   setPage: (page: number) => void;
   resetFilters: () => void;
 }
@@ -63,6 +79,7 @@ export const useFeedStore = create<FeedState>((set) => ({
   showHidden: false,
   sortBy: 'newest',
   collapseDuplicates: getStoredCollapseDuplicates(),
+  timeRange: getStoredTimeRange(),
   currentPage: 1,
 
   // Data actions (synced from React Query)
@@ -130,6 +147,15 @@ export const useFeedStore = create<FeedState>((set) => ({
     set({ collapseDuplicates: collapse, currentPage: 1 });
   },
 
+  setTimeRange: (range) => {
+    try {
+      localStorage.setItem('timeRange', range);
+    } catch {
+      // Ignore localStorage errors
+    }
+    set({ timeRange: range, currentPage: 1 });
+  },
+
   setPage: (page) => {
     set({ currentPage: page });
   },
@@ -140,6 +166,7 @@ export const useFeedStore = create<FeedState>((set) => ({
       categoryFilters: [],
       showHidden: false,
       sortBy: 'newest',
+      timeRange: 'today',
       currentPage: 1,
     });
   },
