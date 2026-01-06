@@ -8,6 +8,8 @@ const schema = a.schema({
       name: a.string().required(),
       type: a.enum(['system', 'custom']),
       isActive: a.boolean().default(true),
+      isPublic: a.boolean().default(true),
+      isDefault: a.boolean().default(true),
       lastPolledAt: a.datetime(),
       pollIntervalMinutes: a.integer().default(15),
       // Error tracking
@@ -20,6 +22,8 @@ const schema = a.schema({
       subscriberCount: a.integer().default(0),
     })
     .authorization((allow) => [
+      // Admin group has full CRUD access
+      allow.group('admin').to(['read', 'create', 'update', 'delete']),
       // All authenticated users can read and create sources (for custom feeds)
       allow.authenticated().to(['read', 'create', 'update']),
       // Public users can read sources (via API key)
@@ -37,7 +41,11 @@ const schema = a.schema({
       sourceType: a.enum(['system', 'custom']),
     })
     .secondaryIndexes((index) => [index('sourceId')])
-    .authorization((allow) => [allow.owner()]),
+    .authorization((allow) => [
+      allow.owner(),
+      // Admin can read all subscriptions for stats
+      allow.group('admin').to(['read']),
+    ]),
 
   // Individual feed items
   FeedItem: a
@@ -141,6 +149,7 @@ const schema = a.schema({
   UserPreferences: a
     .model({
       version: a.integer().default(1),
+      ownerEmail: a.string(), // User's email for admin display
       blockedWords: a.json(),
       hiddenArticleIds: a.json(),
       articlesPerPage: a.integer().default(12),
@@ -152,7 +161,11 @@ const schema = a.schema({
       excludedCategories: a.json(), // Categories to always hide
       customLists: a.json(), // User-defined category lists
     })
-    .authorization((allow) => [allow.owner()]),
+    .authorization((allow) => [
+      allow.owner(),
+      // Admin can read all preferences for stats
+      allow.group('admin').to(['read']),
+    ]),
 });
 
 export type Schema = ClientSchema<typeof schema>;

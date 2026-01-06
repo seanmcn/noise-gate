@@ -44,10 +44,13 @@ export const dataApi = {
    * Used for the logged-out feed view.
    */
   async listPublicFeedItems(): Promise<Article[]> {
-    // First get system sources
+    // First get system sources that are public
     const publicClient = getPublicClient();
     const { data: sources, errors: sourceErrors } = await publicClient.models.Source.list({
-      filter: { type: { eq: 'system' } },
+      filter: {
+        type: { eq: 'system' },
+        isPublic: { eq: true },
+      },
     });
 
     if (sourceErrors?.length) {
@@ -178,6 +181,7 @@ export const dataApi = {
       return {
         id: record.id as string,
         version: (record.version as number) || 1,
+        ownerEmail: (record.ownerEmail as string) || undefined,
         blockedWords: parseJsonField<string[]>(record.blockedWords, []),
         hiddenArticleIds: parseJsonField<string[]>(record.hiddenArticleIds, []),
         articlesPerPage: (record.articlesPerPage as number) || 12,
@@ -237,6 +241,7 @@ export const dataApi = {
     } else {
       const { data, errors } = await client.models.UserPreferences.create({
         version: 1,
+        ownerEmail: user.email,
         blockedWords: JSON.stringify(prefs.blockedWords),
         hiddenArticleIds: JSON.stringify(prefs.hiddenArticleIds),
         articlesPerPage: prefs.articlesPerPage,
@@ -256,6 +261,7 @@ export const dataApi = {
     return {
       id: result.id as string,
       version: (result.version as number) || 1,
+      ownerEmail: (result.ownerEmail as string) || undefined,
       blockedWords: parseJsonField<string[]>(result.blockedWords, []),
       hiddenArticleIds: parseJsonField<string[]>(result.hiddenArticleIds, []),
       articlesPerPage: (result.articlesPerPage as number) || 12,
@@ -359,6 +365,8 @@ export const dataApi = {
       name: record.name as string,
       type: (record.type as SourceType) || 'system',
       isActive: record.isActive as boolean,
+      isPublic: (record.isPublic as boolean) ?? true,
+      isDefault: (record.isDefault as boolean) ?? true,
       lastPolledAt: (record.lastPolledAt as string) || undefined,
       pollIntervalMinutes: (record.pollIntervalMinutes as number) || 15,
       lastError: (record.lastError as string) || undefined,
@@ -395,6 +403,8 @@ export const dataApi = {
       name: record.name as string,
       type: (record.type as SourceType) || 'custom',
       isActive: record.isActive as boolean,
+      isPublic: (record.isPublic as boolean) ?? true,
+      isDefault: (record.isDefault as boolean) ?? true,
       lastPolledAt: (record.lastPolledAt as string) || undefined,
       pollIntervalMinutes: (record.pollIntervalMinutes as number) || 15,
       lastError: (record.lastError as string) || undefined,
@@ -537,6 +547,8 @@ export const dataApi = {
         name: data.name as string,
         type: 'custom',
         isActive: true,
+        isPublic: false,
+        isDefault: false,
         pollIntervalMinutes: 15,
         consecutiveErrors: 0,
         subscriberCount: 1,
@@ -610,5 +622,117 @@ export const dataApi = {
     }
 
     return subscriptions;
+  },
+
+  // ==================== Admin Operations ====================
+
+  /**
+   * List all system sources (admin only).
+   */
+  async listSystemSources(): Promise<Source[]> {
+    const client = getClient();
+    const { data, errors } = await client.models.Source.list({
+      filter: { type: { eq: 'system' } },
+    });
+
+    if (errors?.length) {
+      throw new Error(errors[0].message);
+    }
+
+    return (data || []).map((record: Record<string, unknown>) => ({
+      id: record.id as string,
+      url: record.url as string,
+      name: record.name as string,
+      type: 'system' as SourceType,
+      isActive: (record.isActive as boolean) ?? true,
+      isPublic: (record.isPublic as boolean) ?? true,
+      isDefault: (record.isDefault as boolean) ?? true,
+      lastPolledAt: (record.lastPolledAt as string) || undefined,
+      pollIntervalMinutes: (record.pollIntervalMinutes as number) || 15,
+      lastError: (record.lastError as string) || undefined,
+      consecutiveErrors: (record.consecutiveErrors as number) || 0,
+      lastSuccessAt: (record.lastSuccessAt as string) || undefined,
+      addedByUserId: (record.addedByUserId as string) || undefined,
+      subscriberCount: (record.subscriberCount as number) || 0,
+    }));
+  },
+
+  /**
+   * Create a new system source (admin only).
+   */
+  async createSystemSource(url: string, name: string, isDefault = true): Promise<Source> {
+    const client = getClient();
+    const { data, errors } = await client.models.Source.create({
+      url,
+      name,
+      type: 'system',
+      isActive: true,
+      isPublic: true,
+      isDefault,
+      pollIntervalMinutes: 15,
+      consecutiveErrors: 0,
+      subscriberCount: 0,
+    });
+
+    if (errors?.length) throw new Error(errors[0].message);
+    if (!data) throw new Error('Failed to create source');
+
+    return {
+      id: data.id as string,
+      url: data.url as string,
+      name: data.name as string,
+      type: 'system',
+      isActive: true,
+      isPublic: true,
+      isDefault,
+      pollIntervalMinutes: 15,
+      consecutiveErrors: 0,
+      subscriberCount: 0,
+    };
+  },
+
+  /**
+   * Update a system source (admin only).
+   */
+  async updateSystemSource(
+    id: string,
+    updates: { url?: string; name?: string; isActive?: boolean; isPublic?: boolean; isDefault?: boolean }
+  ): Promise<void> {
+    const client = getClient();
+    const { errors } = await client.models.Source.update({
+      id,
+      ...updates,
+    });
+
+    if (errors?.length) throw new Error(errors[0].message);
+  },
+
+  /**
+   * Delete a system source (admin only).
+   */
+  async deleteSystemSource(id: string): Promise<void> {
+    const client = getClient();
+    const { errors } = await client.models.Source.delete({ id });
+    if (errors?.length) throw new Error(errors[0].message);
+  },
+
+  /**
+   * Get all user preferences for admin stats.
+   */
+  async listAllUserPreferences(): Promise<Record<string, unknown>[]> {
+    const client = getClient();
+    const { data, errors } = await client.models.UserPreferences.list();
+    if (errors?.length) throw new Error(errors[0].message);
+    return data || [];
+  },
+
+  /**
+   * Get all user subscriptions for admin stats.
+   */
+  async listAllSubscriptions(): Promise<Record<string, unknown>[]> {
+    const client = getClient();
+    const { data, errors } = await client.models.UserSourceSubscription.list();
+    if (errors?.length) throw new Error(errors[0].message);
+    return data || [];
   },
 };

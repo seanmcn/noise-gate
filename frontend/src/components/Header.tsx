@@ -1,5 +1,6 @@
-import { Activity, Settings, LogOut, Rss } from 'lucide-react';
+import { Activity, Settings, LogOut, Rss, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAdmin } from '@/hooks/useAdmin';
 
 interface HeaderProps {
   signOut?: () => void;
@@ -7,6 +8,8 @@ interface HeaderProps {
 }
 
 export function Header({ signOut, isAuthenticated = false }: HeaderProps) {
+  const { isAdmin } = useAdmin();
+
   return (
     <header className="border-b border-border/50 bg-background/80 backdrop-blur-xl sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -39,6 +42,16 @@ export function Header({ signOut, isAuthenticated = false }: HeaderProps) {
               >
                 <Settings className="w-5 h-5" />
               </Link>
+
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+                  title="Admin"
+                >
+                  <Shield className="w-5 h-5" />
+                </Link>
+              )}
 
               {signOut && (
                 <button

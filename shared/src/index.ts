@@ -54,6 +54,7 @@ export interface Article {
 export interface UserPreferences {
   id: string;
   version: number;
+  ownerEmail?: string; // User's email for admin display
   blockedWords: string[];
   hiddenArticleIds: string[];
   articlesPerPage: number;
@@ -76,6 +77,8 @@ export interface Source {
   name: string;
   type: SourceType;
   isActive: boolean;
+  isPublic: boolean;
+  isDefault: boolean;
   lastPolledAt?: string;
   pollIntervalMinutes: number;
   // Error tracking
@@ -85,6 +88,15 @@ export interface Source {
   // For custom sources
   addedByUserId?: string;
   subscriberCount: number;
+}
+
+// Admin user statistics
+export interface AdminUserStats {
+  userId: string;
+  email: string;
+  customSourceCount: number;
+  hiddenCategoryCount: number;
+  customListCount: number;
 }
 
 // User subscription to a source (controls visibility)

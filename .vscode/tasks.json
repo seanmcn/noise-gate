@@ -178,14 +178,31 @@
       }
     },
     {
-      "label": "Data: Seed System Sources",
+      "label": "Admin: Add User",
       "type": "shell",
-      "command": "FUNC=$(aws lambda list-functions --query \"Functions[?contains(FunctionName, 'minfeed') && contains(FunctionName, 'sourceseeder')].FunctionName\" --output text) && echo \"Invoking $FUNC\" && aws lambda invoke --function-name $FUNC --payload '{}' /tmp/seeder-output.json && cat /tmp/seeder-output.json",
+      "command": "POOL_ID=$(jq -r '.auth.user_pool_id' frontend/public/amplify_outputs.json) && REGION=$(jq -r '.auth.aws_region' frontend/public/amplify_outputs.json) && echo \"Adding ${input:userEmail} to admin group in $POOL_ID\" && aws cognito-idp admin-add-user-to-group --user-pool-id $POOL_ID --username ${input:userEmail} --group-name admin --region $REGION",
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",
         "panel": "dedicated"
       }
+    },
+    {
+      "label": "Admin: Remove User",
+      "type": "shell",
+      "command": "POOL_ID=$(jq -r '.auth.user_pool_id' frontend/public/amplify_outputs.json) && REGION=$(jq -r '.auth.aws_region' frontend/public/amplify_outputs.json) && echo \"Removing ${input:userEmail} from admin group in $POOL_ID\" && aws cognito-idp admin-remove-user-from-group --user-pool-id $POOL_ID --username ${input:userEmail} --group-name admin --region $REGION",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "userEmail",
+      "description": "User email address",
+      "type": "promptString"
     }
   ]
 }

@@ -13,7 +13,6 @@ import { contentEnricherFunction } from './functions/content-enricher/resource';
 import { aiProcessorFunction } from './functions/ai-processor/resource';
 import { dataCleanupFunction } from './functions/data-cleanup/resource';
 import { feedPreviewFunction } from './functions/feed-preview/resource';
-import { sourceSeederFunction } from './functions/source-seeder/resource';
 
 const backend = defineBackend({
   auth,
@@ -23,7 +22,6 @@ const backend = defineBackend({
   aiProcessorFunction,
   dataCleanupFunction,
   feedPreviewFunction,
-  sourceSeederFunction,
 });
 
 
@@ -136,23 +134,6 @@ new Rule(dataCleanupStack, 'DataCleanupSchedule', {
       event: RuleTargetInput.fromObject({ action: 'full' }),
     }),
   ],
-});
-
-// === Source Seeder Function ===
-const sourceSeederLambda = backend.sourceSeederFunction.resources.lambda;
-
-// Grant read/write access to Source table
-sourceTable.grantReadWriteData(sourceSeederLambda);
-
-// Add table name as environment variable
-const sourceSeederCfnFunction = backend.sourceSeederFunction.resources.cfnResources.cfnFunction;
-sourceSeederCfnFunction.addPropertyOverride('Environment.Variables.SOURCE_TABLE_NAME', sourceTable.tableName);
-
-// Schedule source seeder to run daily (ensures system sources exist)
-const sourceSeederStack = backend.sourceSeederFunction.stack;
-new Rule(sourceSeederStack, 'SourceSeederSchedule', {
-  schedule: Schedule.rate(Duration.hours(24)),
-  targets: [new LambdaFunction(sourceSeederLambda)],
 });
 
 // === Feed Preview Function ===

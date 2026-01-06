@@ -100,10 +100,12 @@ export function useSourcesQuery(enabled = true) {
         dataApi.getPreferences(),
       ]);
 
-      // Auto-subscribe to missing system sources
+      // Auto-subscribe to missing default system sources
       const systemSources = sources.filter((s) => s.type === 'system');
       const subscribedSourceIds = new Set(subscriptions.map((s) => s.sourceId));
-      const missingSystemSources = systemSources.filter((s) => !subscribedSourceIds.has(s.id));
+      const missingSystemSources = systemSources.filter(
+        (s) => s.isDefault && !subscribedSourceIds.has(s.id)
+      );
 
       let finalSubscriptions = subscriptions;
       if (missingSystemSources.length > 0) {

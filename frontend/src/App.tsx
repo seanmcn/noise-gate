@@ -16,6 +16,7 @@ import { WebSiteJsonLd, WebApplicationJsonLd, OrganizationJsonLd } from '@/compo
 import Index from './pages/Index';
 import Settings from './pages/Settings';
 import Sources from './pages/Sources';
+import Admin from './pages/Admin';
 import NotFound from './pages/NotFound';
 
 // Protected route wrapper - redirects to home if not authenticated
@@ -167,6 +168,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <Sources signOut={signOut ?? (() => {})} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <Admin signOut={signOut ?? (() => {})} />
               </ProtectedRoute>
             }
           />
