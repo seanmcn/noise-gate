@@ -106,7 +106,8 @@ export function useUpdateSystemSourceMutation() {
 }
 
 /**
- * Hook to delete a system source.
+ * Hook to delete a system source and clean up associated articles.
+ * Returns { itemsMarked: number } on success.
  */
 export function useDeleteSystemSourceMutation() {
   const queryClient = useQueryClient();

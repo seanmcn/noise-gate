@@ -708,12 +708,17 @@ export const dataApi = {
   },
 
   /**
-   * Delete a system source (admin only).
+   * Delete a system source and clean up associated articles (admin only).
+   * Returns the number of articles marked for deletion.
    */
-  async deleteSystemSource(id: string): Promise<void> {
+  async deleteSystemSource(id: string): Promise<{ itemsMarked: number }> {
     const client = getClient();
-    const { errors } = await client.models.Source.delete({ id });
+    const { data, errors } = await client.mutations.deleteSourceWithCleanup({
+      sourceId: id,
+    });
     if (errors?.length) throw new Error(errors[0].message);
+    if (!data?.success) throw new Error(data?.error || 'Failed to delete source');
+    return { itemsMarked: data.itemsMarked };
   },
 
   /**

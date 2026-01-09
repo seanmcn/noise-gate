@@ -1,4 +1,5 @@
 import { a, defineData, type ClientSchema } from '@aws-amplify/backend';
+import { dataCleanupFunction } from '../functions/data-cleanup/resource';
 
 const schema = a.schema({
   // Shared RSS sources (system defaults + user-added custom sources)
@@ -166,6 +167,22 @@ const schema = a.schema({
       // Admin can read all preferences for stats
       allow.group('admin').to(['read']),
     ]),
+
+  // Custom mutation to delete a source and clean up associated articles
+  deleteSourceWithCleanup: a
+    .mutation()
+    .arguments({
+      sourceId: a.string().required(),
+    })
+    .returns(
+      a.customType({
+        success: a.boolean().required(),
+        itemsMarked: a.integer().required(),
+        error: a.string(),
+      })
+    )
+    .authorization((allow) => [allow.group('admin')])
+    .handler(a.handler.function(dataCleanupFunction)),
 });
 
 export type Schema = ClientSchema<typeof schema>;

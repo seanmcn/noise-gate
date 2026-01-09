@@ -107,14 +107,16 @@ new Rule(aiProcessorStack, 'AiProcessorSchedule', {
 // === Data Cleanup Function ===
 const dataCleanupLambda = backend.dataCleanupFunction.resources.lambda;
 
-// Grant read/write access to tables
+// Grant read/write access to tables (including Source for deleteSourceWithCleanup mutation)
 feedItemTable.grantReadWriteData(dataCleanupLambda);
 storyGroupTable.grantReadWriteData(dataCleanupLambda);
+sourceTable.grantReadWriteData(dataCleanupLambda);
 
 // Add table names as environment variables
 const dataCleanupCfnFunction = backend.dataCleanupFunction.resources.cfnResources.cfnFunction;
 dataCleanupCfnFunction.addPropertyOverride('Environment.Variables.FEED_ITEM_TABLE_NAME', feedItemTable.tableName);
 dataCleanupCfnFunction.addPropertyOverride('Environment.Variables.STORY_GROUP_TABLE_NAME', storyGroupTable.tableName);
+dataCleanupCfnFunction.addPropertyOverride('Environment.Variables.SOURCE_TABLE_NAME', sourceTable.tableName);
 
 // Add DynamoDB Stream as event source (triggered when items are deleted by TTL)
 dataCleanupLambda.addEventSource(

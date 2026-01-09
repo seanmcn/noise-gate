@@ -35,6 +35,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useAdmin } from '@/hooks/useAdmin';
+import { useToast } from '@/hooks/use-toast';
 import {
   useSystemSourcesQuery,
   useUserStatsQuery,
@@ -50,6 +51,7 @@ interface AdminProps {
 
 export function Admin({ signOut }: AdminProps) {
   const { isAdmin, isLoading: isCheckingAdmin } = useAdmin();
+  const { toast } = useToast();
 
   // Source form state
   const [sourceDialogOpen, setSourceDialogOpen] = useState(false);
@@ -57,6 +59,7 @@ export function Admin({ signOut }: AdminProps) {
   const [sourceUrl, setSourceUrl] = useState('');
   const [sourceName, setSourceName] = useState('');
   const [sourceIsDefault, setSourceIsDefault] = useState(true);
+  const [deletingSourceId, setDeletingSourceId] = useState<string | null>(null);
 
   // Queries
   const { data: sources, isLoading: sourcesLoading } =
@@ -134,9 +137,27 @@ export function Admin({ signOut }: AdminProps) {
     });
   };
 
-  const handleDeleteSource = (id: string) => {
-    if (confirm('Are you sure you want to delete this source?')) {
-      deleteMutation.mutate(id);
+  const handleDeleteSource = async (id: string) => {
+    if (confirm('Are you sure you want to delete this source? Associated articles will be marked for cleanup.')) {
+      setDeletingSourceId(id);
+      try {
+        const result = await deleteMutation.mutateAsync(id);
+        const itemsMarked = result?.itemsMarked ?? 0;
+        toast({
+          title: 'Source deleted',
+          description: itemsMarked > 0
+            ? `Marked ${itemsMarked} article${itemsMarked === 1 ? '' : 's'} for cleanup`
+            : 'No associated articles found',
+        });
+      } catch (error) {
+        toast({
+          title: 'Failed to delete source',
+          description: error instanceof Error ? error.message : 'Unknown error',
+          variant: 'destructive',
+        });
+      } finally {
+        setDeletingSourceId(null);
+      }
     }
   };
 
@@ -284,10 +305,14 @@ export function Admin({ signOut }: AdminProps) {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDeleteSource(source.id)}
-                              disabled={isSaving}
+                              disabled={isSaving || deletingSourceId === source.id}
                               className="text-destructive hover:text-destructive hover:bg-destructive/10"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              {deletingSourceId === source.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
                             </Button>
                           </div>
                         </TableCell>
